@@ -1,0 +1,220 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle, Upload, RefreshCw, MessageSquare, ArrowRight } from "lucide-react";
+import heroImage from "@/assets/hero-academic.jpg";
+
+const Landing = () => {
+  const handleGetStarted = () => {
+    // In a real app, this would trigger Google OAuth
+    // For demo purposes, navigate directly to onboarding
+    window.location.href = "/onboarding";
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle">
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
+            <h1 className="text-xl font-playfair font-medium text-foreground">PersonaPen</h1>
+          </div>
+          <Button variant="outline" size="sm">
+            Sign In
+          </Button>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+          <div className="text-center lg:text-left">
+            <h1 className="text-5xl md:text-6xl font-playfair font-medium text-foreground mb-6 leading-tight">
+              Essays in <span className="text-primary">Your Voice</span>
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8 font-inter">
+              Generate high-quality academic writing that authentically reflects your unique personal style. 
+              Stop spending hours tweaking generic AI text.
+            </p>
+            <Button 
+              variant="academic" 
+              size="lg" 
+              onClick={handleGetStarted}
+              className="font-inter font-medium"
+            >
+              Get Started with Google
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <p className="text-sm text-muted-foreground mt-4 font-inter">
+              Free to start • No credit card required
+            </p>
+          </div>
+          
+          <div className="relative">
+            <div className="relative overflow-hidden rounded-2xl shadow-elegant">
+              <img 
+                src={heroImage} 
+                alt="Academic writing workspace with books and fountain pen" 
+                className="w-full h-96 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
+            How PersonaPen Works
+          </h2>
+          <p className="text-lg text-muted-foreground font-inter max-w-2xl mx-auto">
+            Three simple steps to transform your writing workflow
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <Card className="text-center shadow-soft border-0">
+            <CardContent className="p-8">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Upload className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-playfair font-medium text-foreground mb-3">
+                Upload Your Writing
+              </h3>
+              <p className="text-muted-foreground font-inter">
+                Share 2-3 of your best essays (3,000-5,000 words total) to create your style profile
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center shadow-soft border-0">
+            <CardContent className="p-8">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <RefreshCw className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-playfair font-medium text-foreground mb-3">
+                Style Transfer
+              </h3>
+              <p className="text-muted-foreground font-inter">
+                Input any text and watch it transform to match your unique writing voice and cadence
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center shadow-soft border-0">
+            <CardContent className="p-8">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-playfair font-medium text-foreground mb-3">
+                Research & Answer
+              </h3>
+              <p className="text-muted-foreground font-inter">
+                Upload source materials and ask questions. Get well-researched answers in your style
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Benefits */}
+      <section className="bg-card/50 py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-3xl font-playfair font-medium text-center text-foreground mb-12">
+              Why Choose PersonaPen?
+            </h2>
+            
+            <div className="space-y-6">
+              <div className="flex items-start space-x-4">
+                <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg font-inter font-medium text-foreground mb-1">
+                    Authentic Voice
+                  </h3>
+                  <p className="text-muted-foreground font-inter">
+                    Advanced AI learns your writing patterns, vocabulary, and style to produce text that sounds genuinely like you
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-4">
+                <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg font-inter font-medium text-foreground mb-1">
+                    Academic Excellence
+                  </h3>
+                  <p className="text-muted-foreground font-inter">
+                    Designed specifically for humanities students with focus on essay writing and scholarly analysis
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-4">
+                <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg font-inter font-medium text-foreground mb-1">
+                    Time Saving
+                  </h3>
+                  <p className="text-muted-foreground font-inter">
+                    Eliminate hours of manual editing. Get publication-ready text that matches your voice from the start
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-4">
+                <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg font-inter font-medium text-foreground mb-1">
+                    Source-Based Research
+                  </h3>
+                  <p className="text-muted-foreground font-inter">
+                    Upload documents and get accurate, well-cited responses that maintain academic integrity
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
+            Ready to Write in Your Voice?
+          </h2>
+          <p className="text-lg text-muted-foreground mb-8 font-inter">
+            Join students who are already creating better essays faster
+          </p>
+          <Button 
+            variant="academic" 
+            size="lg" 
+            onClick={handleGetStarted}
+            className="font-inter font-medium"
+          >
+            Start Your Free Account
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border bg-card/30 py-8">
+        <div className="container mx-auto px-4 text-center">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="w-6 h-6 bg-gradient-primary rounded"></div>
+            <span className="font-playfair font-medium text-foreground">PersonaPen</span>
+          </div>
+          <p className="text-sm text-muted-foreground font-inter">
+            © 2024 PersonaPen. Academic writing in your authentic voice.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default Landing;
