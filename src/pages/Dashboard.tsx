@@ -17,6 +17,7 @@ import {
   ArrowRight 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("style-transfer");
@@ -95,9 +96,9 @@ const Dashboard = () => {
             <Badge variant="secondary" className="font-inter">
               Style Profile Active
             </Badge>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
               <User className="h-4 w-4 mr-2" />
-              Alex
+              Sign Out
             </Button>
           </div>
         </div>

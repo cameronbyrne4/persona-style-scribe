@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, FileText, CheckCircle, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 
 const Onboarding = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -11,6 +12,42 @@ const Onboarding = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const { toast } = useToast();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [wordCount, setWordCount] = useState(0);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Redirect to landing if not signed in, but only after loading
+  useEffect(() => {
+    if (!loading && user === null) {
+      window.location.href = "/";
+    }
+  }, [user, loading]);
+
+  useEffect(() => {
+    const updateWordCount = async () => {
+      let total = 0;
+      if (pastedText && pastedText.trim()) total += countWords(pastedText);
+      for (const file of uploadedFiles) {
+        const text = await file.text();
+        total += countWords(text);
+      }
+      setWordCount(total);
+    };
+    updateWordCount();
+  }, [uploadedFiles, pastedText]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -21,35 +58,147 @@ const Onboarding = () => {
     });
   };
 
+  const MIN_WORDS = 600;
+  const MAX_WORDS = 5000;
+
+  const countWords = (text: string): number => {
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
+
+  const getTotalWordCount = async (): Promise<number> => {
+    let total: number = 0;
+    // Count words in pasted text
+    if (pastedText && pastedText.trim()) {
+      total += Number(countWords(pastedText));
+    }
+    // Count words in uploaded files
+    for (const file of uploadedFiles) {
+      const text = await file.text();
+      total += Number(countWords(text));
+    }
+    return total;
+  };
+  console.log("Uploaded files, calling edge function");
+  const EDGE_FUNCTION_URL = "https://kiusphbzbtkdykmnvgmq.supabase.co/functions/v1/extract-text"; // should work? investivate as a possible source of error
+
   const handleSubmit = async () => {
     if (uploadedFiles.length === 0 && !pastedText.trim()) {
       toast({
         title: "No content provided",
-        description: "Please upload files or paste text to create your style profile",
+        description: "Please upload .txt files or paste text to create your style profile",
         variant: "destructive",
       });
       return;
     }
-
     setIsProcessing(true);
-    
-    // Simulate processing
-    setTimeout(() => {
+    const totalWords = Number(await getTotalWordCount());
+    if (totalWords < MIN_WORDS) {
       setIsProcessing(false);
-      setIsComplete(true);
       toast({
-        title: "Style profile created!",
-        description: "Your writing style has been analyzed and saved",
+        title: `Not enough words (${totalWords})`,
+        description: `Please provide at least ${MIN_WORDS} words in total.`,
+        variant: "destructive",
       });
-    }, 3000);
+      return;
+    }
+    if (totalWords > MAX_WORDS) {
+      setIsProcessing(false);
+      toast({
+        title: `Too many words (${totalWords})`,
+        description: `Please reduce your input to no more than ${MAX_WORDS} words in total.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    console.log("checking upload status...");
+    let uploadSuccess = true;
+    const filePaths: string[] = [];
+    // Upload files to Supabase Storage
+    for (const file of uploadedFiles) {
+      const filePath = `${user.id}/${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage.from("user-uploads").upload(filePath, file);
+      if (error) {
+        uploadSuccess = false;
+        toast({
+          title: `Failed to upload ${file.name}`,
+          description: error.message,
+          variant: "destructive",
+        });
+        console.log("upload failed");
+      } else {
+        filePaths.push(filePath);
+        toast({
+          title: `Uploaded ${file.name}`,
+          description: "File uploaded successfully",
+        });
+        console.log("upload successful");
+      }
+    }
+    // Store pasted text as a file in Supabase Storage if present
+    if (pastedText.trim()) {
+      console.log("pasted text detected");
+      const filePath = `${user.id}/${Date.now()}-pasted-text.txt`;
+      console.log("Uploading to filePath:", filePath);
+      console.log("Pasted text length:", pastedText.length);
+      const textBlob = new Blob([pastedText], { type: "text/plain" });
+      
+      // First, let's check if the bucket exists
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      console.log("Available buckets:", buckets);
+      if (bucketError) {
+        console.log("Error listing buckets:", bucketError);
+      }
+      
+      const { data, error } = await supabase.storage.from("user-uploads").upload(filePath, textBlob);
+      if (error) {
+        console.log("Supabase upload error details:", error);
+        console.log("Error message:", error.message);
+        uploadSuccess = false;
+        toast({
+          title: "Failed to upload pasted text",
+          description: error.message,
+          variant: "destructive",
+        });
+        console.log("pasted text upload failed");
+      } else {
+        filePaths.push(filePath);
+        toast({
+          title: "Pasted text uploaded",
+          description: "Text uploaded successfully",
+        });
+        console.log("pasted text upload successful");
+      }
+    }
+    // Call Edge Function for each file
+    if (uploadSuccess && filePaths.length > 0) {
+      try {
+        await Promise.all(
+          filePaths.map(filePath =>
+            fetch(EDGE_FUNCTION_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ filePath, userId: user.id }),
+            })
+          )
+        );
+        setIsComplete(true);
+        toast({
+          title: "Style profile created!",
+          description: "Your writing style has been analyzed and saved",
+        });
+      } catch (err) {
+        toast({
+          title: "Processing error",
+          description: "Failed to process one or more files.",
+          variant: "destructive",
+        });
+      }
+    }
+    setIsProcessing(false);
   };
 
-  const getTotalWordCount = () => {
-    const pastedWordCount = pastedText.trim().split(/\s+/).length;
-    // Estimate 500 words per page for uploaded files
-    const fileWordCount = uploadedFiles.length * 500;
-    return pastedWordCount + fileWordCount;
-  };
+  if (loading) return <div>Loading...</div>;
 
   if (isComplete) {
     return (
@@ -83,11 +232,21 @@ const Onboarding = () => {
     <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
             <h1 className="text-xl font-playfair font-medium text-foreground">PersonaPen</h1>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/";
+            }}
+          >
+            Sign Out
+          </Button>
         </div>
       </header>
 
@@ -122,7 +281,7 @@ const Onboarding = () => {
                   Upload Files
                 </CardTitle>
                 <CardDescription className="font-inter">
-                  Upload your essays as PDF or text files
+                  Upload your essays as plain text (.txt) files only
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -130,7 +289,7 @@ const Onboarding = () => {
                   <input
                     type="file"
                     multiple
-                    accept=".pdf,.txt,.doc,.docx"
+                    accept=".txt"
                     onChange={handleFileUpload}
                     className="hidden"
                     id="file-upload"
@@ -184,14 +343,16 @@ const Onboarding = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-inter text-sm text-muted-foreground">Total Word Count (estimated)</p>
-                  <p className="font-playfair text-2xl font-medium text-foreground">{getTotalWordCount().toLocaleString()}</p>
+                  <p className="font-playfair text-2xl font-medium text-foreground">{wordCount.toLocaleString()}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-inter text-sm text-muted-foreground">Recommended: 3,000-5,000 words</p>
                   <div className="w-32 h-2 bg-muted rounded-full mt-1">
-                    <div 
-                      className="h-2 bg-primary rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, (getTotalWordCount() / 4000) * 100)}%` }}
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        wordCount >= 2000 && wordCount <= 5000 ? "bg-success" : "bg-muted-foreground"
+                      }`}
+                      style={{ width: `${Math.min(100, (wordCount / 5000) * 100)}%` }}
                     ></div>
                   </div>
                 </div>

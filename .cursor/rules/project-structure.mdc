@@ -1,0 +1,19 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Project Structure Guide
+
+The main entry point for the application is [src/main.tsx](mdc:src/main.tsx), which bootstraps the React app. The primary app component is [src/App.tsx](mdc:src/App.tsx).
+
+Key directories:
+- [src/components/](mdc:src/components/) contains reusable UI components, with [src/components/ui/](mdc:src/components/ui/) holding atomic and composite UI elements.
+- [src/pages/](mdc:src/pages/) contains top-level page components for routing.
+- [src/hooks/](mdc:src/hooks/) contains custom React hooks.
+- [src/lib/](mdc:src/lib/) contains utility functions.
+- [public/](mdc:public/) contains static assets served directly.
+
+Configuration and setup files include [vite.config.ts](mdc:vite.config.ts), [tailwind.config.ts](mdc:tailwind.config.ts), and [package.json](mdc:package.json).
+
+Documentation is located in the [docs/](mdc:docs/) directory.

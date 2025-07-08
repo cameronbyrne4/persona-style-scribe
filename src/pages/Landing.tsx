@@ -2,12 +2,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Upload, RefreshCw, MessageSquare, ArrowRight } from "lucide-react";
 import heroImage from "@/assets/hero-academic.jpg";
+import { supabase } from "@/lib/supabaseClient";
 
-const Landing = () => {
+// Accept user as a prop
+const Landing = ({ user }) => {
   const handleGetStarted = () => {
-    // In a real app, this would trigger Google OAuth
-    // For demo purposes, navigate directly to onboarding
     window.location.href = "/onboarding";
+  };
+
+  const handleSignIn = () => {
+    supabase.auth.signInWithOAuth({ provider: 'google' });
+  };
+
+  const handleGoToDashboard = () => {
+    window.location.href = "/dashboard";
   };
 
   return (
@@ -19,9 +27,16 @@ const Landing = () => {
             <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
             <h1 className="text-xl font-playfair font-medium text-foreground">PersonaPen</h1>
           </div>
-          <Button variant="outline" size="sm">
-            Sign In
-          </Button>
+          {/* Conditionally render button based on user */}
+          {user ? (
+            <Button variant="outline" size="sm" onClick={handleGoToDashboard}>
+              Go to Dashboard
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleSignIn}>
+              Sign In
+            </Button>
+          )}
         </div>
       </header>
 
@@ -39,7 +54,7 @@ const Landing = () => {
             <Button 
               variant="academic" 
               size="lg" 
-              onClick={handleGetStarted}
+              onClick={handleSignIn}
               className="font-inter font-medium"
             >
               Get Started with Google
