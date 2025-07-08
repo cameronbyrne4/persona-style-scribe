@@ -173,14 +173,35 @@ const Onboarding = () => {
     // Call Edge Function for each file
     if (uploadSuccess && filePaths.length > 0) {
       try {
-        await Promise.all(
-          filePaths.map(filePath =>
-            fetch(EDGE_FUNCTION_URL, {
+        // Get the user's JWT token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        
+        if (!token) {
+          throw new Error("No authentication token available");
+        }
+        
+        const responses = await Promise.all(
+          filePaths.map(async filePath => {
+            const response = await fetch(EDGE_FUNCTION_URL, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              },
               body: JSON.stringify({ filePath, userId: user.id }),
-            })
-          )
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.log(`Edge Function error for ${filePath}:`, response.status, errorText);
+              throw new Error(`Edge Function failed: ${response.status} - ${errorText}`);
+            }
+            
+            const result = await response.json();
+            console.log(`Edge Function success for ${filePath}:`, result);
+            return result;
+          })
         );
         setIsComplete(true);
         toast({
