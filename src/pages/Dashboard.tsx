@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,8 @@ import {
   FileText, 
   Settings,
   History,
-  ArrowRight 
+  ArrowRight,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
@@ -26,7 +27,56 @@ const Dashboard = () => {
   const [question, setQuestion] = useState("");
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Load user and documents on component mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        // Get current user
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          
+          // Load user's documents
+          const { data: docs, error } = await supabase
+            .from('documents')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('uploaded_at', { ascending: false });
+          
+          if (error) {
+            console.error('Error loading documents:', error);
+            toast({
+              title: "Error loading documents",
+              description: error.message,
+              variant: "destructive",
+            });
+          } else {
+            setDocuments(docs || []);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [toast]);
+
+  // Calculate style profile stats
+  const totalWords = documents.reduce((sum, doc) => {
+    return sum + (doc.extracted_text?.split(/\s+/).length || 0);
+  }, 0);
+
+  const styleStrength = documents.length >= 3 && totalWords >= 3000 ? "Excellent" : 
+                       documents.length >= 2 && totalWords >= 2000 ? "Good" : 
+                       documents.length >= 1 && totalWords >= 1000 ? "Fair" : "Poor";
 
   const handleStyleTransfer = async () => {
     if (!inputText.trim()) {
@@ -40,15 +90,48 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setOutputText(`This is a sample rewrite of your input text in your personal academic style. The system has analyzed your writing patterns and applied them to transform: "${inputText.substring(0, 50)}..."`);
-      setIsGenerating(false);
+    try {
+      // Get the user's JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      if (!token) {
+        throw new Error("No authentication token available");
+      }
+      
+      // Call the style transfer Edge Function
+      const response = await fetch('https://kiusphbzbtkdykmnvgmq.supabase.co/functions/v1/style-transfer', {
+        method: 'POST',
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ inputText: inputText.trim() }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      setOutputText(result.generatedText);
+      
       toast({
         title: "Style transfer complete",
         description: "Your text has been rewritten in your unique voice",
       });
-    }, 2000);
+      
+    } catch (error) {
+      console.error('Style transfer error:', error);
+      toast({
+        title: "Style transfer failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleRAGQuery = async () => {
@@ -147,20 +230,34 @@ const Dashboard = () => {
                 <CardTitle className="font-playfair font-medium text-lg">Your Style Profile</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 text-sm font-inter">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Samples analyzed:</span>
-                    <span className="font-medium">3 essays</span>
+                {loading ? (
+                  <div className="space-y-3 text-sm font-inter">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Loading...</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Word count:</span>
-                    <span className="font-medium">4,250 words</span>
+                ) : (
+                  <div className="space-y-3 text-sm font-inter">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Samples analyzed:</span>
+                      <span className="font-medium">{documents.length} document{documents.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Word count:</span>
+                      <span className="font-medium">{totalWords.toLocaleString()} words</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Style strength:</span>
+                      <span className={`font-medium ${
+                        styleStrength === 'Excellent' ? 'text-green-600' :
+                        styleStrength === 'Good' ? 'text-blue-600' :
+                        styleStrength === 'Fair' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {styleStrength}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Style strength:</span>
-                    <span className="font-medium text-primary">Excellent</span>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -168,9 +265,10 @@ const Dashboard = () => {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="style-transfer" className="font-inter">Style Transfer</TabsTrigger>
                 <TabsTrigger value="rag" className="font-inter">Research & Answer</TabsTrigger>
+                <TabsTrigger value="documents" className="font-inter">My Documents</TabsTrigger>
               </TabsList>
 
               <TabsContent value="style-transfer" className="space-y-6">
@@ -298,6 +396,93 @@ const Dashboard = () => {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              <TabsContent value="documents" className="space-y-6">
+                <Card className="shadow-soft border-0">
+                  <CardHeader>
+                    <CardTitle className="font-playfair font-medium">Your Writing Samples</CardTitle>
+                    <CardDescription className="font-inter">
+                      View and manage the documents that define your writing style
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <div className="text-muted-foreground font-inter">Loading your documents...</div>
+                      </div>
+                    ) : documents.length === 0 ? (
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="font-playfair font-medium text-lg mb-2">No documents yet</h3>
+                        <p className="text-muted-foreground font-inter mb-4">
+                          Upload writing samples to create your style profile
+                        </p>
+                        <Button 
+                          variant="academic" 
+                          onClick={() => window.location.href = "/onboarding"}
+                          className="font-inter"
+                        >
+                          Upload Samples
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {documents.map((doc) => (
+                          <div key={doc.id} className="border border-border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <FileText className="h-4 w-4 text-primary" />
+                                <span className="font-inter font-medium">
+                                  {doc.file_url?.split('/').pop() || 'Document'}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-muted-foreground font-inter">
+                                  {new Date(doc.uploaded_at).toLocaleDateString()}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    if (confirm('Are you sure you want to delete this document?')) {
+                                      const { error } = await supabase
+                                        .from('documents')
+                                        .delete()
+                                        .eq('id', doc.id);
+                                      
+                                      if (error) {
+                                        toast({
+                                          title: "Error deleting document",
+                                          description: error.message,
+                                          variant: "destructive",
+                                        });
+                                      } else {
+                                        setDocuments(documents.filter(d => d.id !== doc.id));
+                                        toast({
+                                          title: "Document deleted",
+                                          description: "Document removed from your style profile",
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground font-inter">
+                              {doc.extracted_text?.substring(0, 200)}...
+                            </div>
+                            <div className="text-xs text-muted-foreground font-inter mt-2">
+                              {doc.extracted_text?.split(/\s+/).length || 0} words
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
