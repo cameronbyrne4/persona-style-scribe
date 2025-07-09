@@ -99,7 +99,7 @@ serve(async (req) => {
     }
     
     console.log(`Found ${documents.length} documents`);
-    
+    console.log("calling anthropic api");
     // Combine all writing samples and clean them
     const writingSamples = documents.map(doc => {
       let text = doc.extracted_text;
@@ -111,7 +111,7 @@ serve(async (req) => {
       text = text.replace(/^.*?(Word Count:|Date:|Course:|Dr\.|Professor).*?\n/g, '');
       
       // Remove author name and course info patterns
-      text = text.replace(/^.*?(Cameron Byrne|Dr\.|SN\d+|Word Count:).*?\n/g, '');
+      text = text.replace(/^.*?(Dr\.|Professor|SN\d+|Word Count:).*?\n/g, '');
       
       // Clean up any remaining header-like content
       text = text.replace(/^.*?(Introduction:|Abstract:|The Crucial Significance|Firstly,)/s, '$1');
@@ -122,13 +122,15 @@ serve(async (req) => {
     // Prepare the prompt for OpenAI
     const systemPrompt = `You are a high-achieving undergraduate student in humanities. You will be helping rewrite text to match a specific author's style so it sounds like they wrote it.
 
-Your task is to:
-1. Analyze the writing samples to identify the author's style characteristics
-2. Rewrite the input text to match that style exactly
+Instructions:
+- Do NOT add any commentary, analysis, or explanation before or after the rewritten text.
+- Do NOT introduce quotes, references, or sources that are not present in the original input.
+- Keep the output similar in length to the input; do not make it significantly longer or shorter.
+- Focus on mirroring the student's habits in punctuation, grammar, vocabulary, sentence structure, transitions, and tone.
 
 Focus on: punctuation, grammar, vocabulary, depth of analysis, transitions between ideas, transition phrases, quote introductions, sentence complexity, sentence length, and tone.`;
 
-    const userPrompt = `I will share with you an old essay from the student so you can mimic their writing style.
+    const userPrompt = `I will share with you sample writings from the student so you can mimic their writing style.
 
 STUDENT'S WRITING SAMPLE:
 
@@ -138,31 +140,52 @@ TEXT TO REWRITE IN THE STUDENT'S STYLE:
 
 ${inputText}
 
-Please rewrite the text above to match the student's writing style exactly.`;
+Please rewrite the text above to mimic the student's writing style. Focus only on the actual essay content and writing style - ignore any headers, course information, or metadata.`;
 
-    console.log("Calling OpenAI API...");
+    console.log("Calling Anthropic Claude API...");
+    console.log("Writing samples length:", writingSamples.length);
+    console.log("Input text length:", inputText.length);
     
-    // Call OpenAI API
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Comprehensive API key debugging
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    console.log("=== API Key Debug Info ===");
+    console.log("Key present:", !!anthropicKey);
+    console.log("Key length:", anthropicKey?.length);
+    console.log("Starts with sk-ant-:", anthropicKey?.startsWith('sk-ant-'));
+    console.log("Key preview:", anthropicKey?.substring(0, 15) + "..." + anthropicKey?.substring(anthropicKey.length - 5));
+    console.log("Has whitespace:", /\s/.test(anthropicKey || ''));
+    console.log("Has newlines:", /\n/.test(anthropicKey || ''));
+
+    // Clean the key
+    const cleanKey = anthropicKey?.trim().replace(/[\r\n]/g, '');
+    console.log("Cleaned key length:", cleanKey?.length);
+    console.log("Cleaned key starts with sk-ant-:", cleanKey?.startsWith('sk-ant-'));
+    console.log("========================");
+    
+    console.log("API key verified, proceeding with style transfer...");
+    
+    // Call Anthropic Claude API
+    const headers = new Headers({
+      'x-api-key': cleanKey,
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+    });
+    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 3000,
         temperature: 0.7,
+        messages: [
+          { role: 'user', content: `${systemPrompt}\n\n${userPrompt}` }
+        ],
       }),
     });
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.log("OpenAI API error:", errorText);
+    if (!anthropicResponse.ok) {
+      const errorText = await anthropicResponse.text();
+      console.log("Anthropic API error:", errorText);
       return new Response(JSON.stringify({ error: "Failed to generate text" }), {
         status: 500,
         headers: {
@@ -172,8 +195,25 @@ Please rewrite the text above to match the student's writing style exactly.`;
       });
     }
 
-    const openaiData = await openaiResponse.json();
-    const fullResponse = openaiData.choices[0]?.message?.content;
+    const anthropicData = await anthropicResponse.json();
+    console.log("Anthropic response structure:", JSON.stringify(anthropicData, null, 2));
+    
+    // Handle both possible response formats
+    let fullResponse;
+    if (anthropicData.content && anthropicData.content[0] && anthropicData.content[0].text) {
+      fullResponse = anthropicData.content[0].text;
+    } else if (anthropicData.choices && anthropicData.choices[0] && anthropicData.choices[0].message) {
+      fullResponse = anthropicData.choices[0].message.content;
+    } else {
+      console.log("Unexpected response structure:", anthropicData);
+      return new Response(JSON.stringify({ error: "Unexpected API response format" }), {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        },
+      });
+    }
 
     if (!fullResponse) {
       return new Response(JSON.stringify({ error: "No text generated" }), {

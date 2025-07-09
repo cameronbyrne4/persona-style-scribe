@@ -111,7 +111,8 @@ const Dashboard = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        console.log("Edge Function error details:", errorData);
+        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
       }
       
       const result = await response.json();
