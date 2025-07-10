@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +17,10 @@ import {
   ArrowRight,
   Trash2,
   Send,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  Eye
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
@@ -43,6 +46,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [ragMessages, setRagMessages] = useState<RAGMessage[]>([]);
   const [currentSourceName, setCurrentSourceName] = useState("");
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [showSourceText, setShowSourceText] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Load user and documents on component mount
@@ -260,6 +266,34 @@ const Dashboard = () => {
     setQuestion("");
   };
 
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  };
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    scrollToBottom();
+  }, [ragMessages]);
+
+  // Check if scroll button should be shown
+  useEffect(() => {
+    const handleScroll = () => {
+      if (chatContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        setShowScrollButton(!isNearBottom);
+      }
+    };
+
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [ragMessages]);
+
   const handleSourceFileChange = (file: File | null) => {
     setSourceFile(file);
     if (file) {
@@ -276,11 +310,21 @@ const Dashboard = () => {
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(outputText);
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
     toast({
       title: "Copied to clipboard",
-      description: "Generated text copied successfully",
+      description: "Text copied successfully",
+    });
+  };
+
+  const cancelGeneration = () => {
+    setIsGenerating(false);
+    // Remove the last question if it was just added
+    setRagMessages(prev => prev.filter(msg => msg.type !== 'question' || msg.timestamp.getTime() < Date.now() - 1000));
+    toast({
+      title: "Generation cancelled",
+      description: "The request has been cancelled",
     });
   };
 
@@ -428,7 +472,7 @@ const Dashboard = () => {
                     <CardHeader>
                       <CardTitle className="font-playfair font-medium flex items-center justify-between">
                         Generated Output
-                        <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                        <Button variant="outline" size="sm" onClick={() => copyToClipboard(outputText)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Copy
                         </Button>
@@ -443,151 +487,168 @@ const Dashboard = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="rag" className="space-y-6">
-                {/* Source Input Section */}
-                <Card className="shadow-soft border-0">
-                  <CardHeader>
-                    <CardTitle className="font-playfair font-medium">Research & Answer</CardTitle>
-                    <CardDescription className="font-inter">
-                      Upload a source document or paste text, then ask questions to get answers in your style
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Source Input - Side by Side */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {/* File Upload */}
-                      <div>
-                        <label className="text-sm font-inter font-medium text-foreground mb-2 block">
-                          Upload Document
-                        </label>
-                        <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
-                          <input
-                            type="file"
-                            accept=".pdf,.txt"
-                            onChange={(e) => handleSourceFileChange(e.target.files?.[0] || null)}
-                            className="hidden"
-                            id="source-upload"
-                          />
-                          <label htmlFor="source-upload" className="cursor-pointer">
-                            <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                            <p className="font-inter text-sm text-muted-foreground">
-                              {sourceFile ? sourceFile.name : "Upload PDF or TXT file"}
-                            </p>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Text Input */}
-                      <div>
-                        <label className="text-sm font-inter font-medium text-foreground mb-2 block">
-                          Or Paste Text
-                        </label>
-                        <Textarea
-                          placeholder="Paste your source text here..."
-                          value={sourceText}
-                          onChange={(e) => handleSourceTextChange(e.target.value)}
-                          className="min-h-32 font-inter"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Current Source Indicator */}
-                    {currentSourceName && (
-                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="font-inter text-sm font-medium">
-                            Current Source: {currentSourceName}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={clearRAGConversation}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Question Input */}
-                    <div>
-                      <label className="text-sm font-inter font-medium text-foreground mb-2 block">
-                        Your Question
-                      </label>
-                      <div className="flex space-x-2">
-                        <Textarea
-                          placeholder="What would you like to know about the source material?"
-                          value={question}
-                          onChange={(e) => setQuestion(e.target.value)}
-                          className="min-h-24 font-inter flex-1"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                              e.preventDefault();
-                              handleRAGQuery();
-                            }
-                          }}
-                        />
-                        <Button 
-                          variant="academic" 
-                          onClick={handleRAGQuery}
-                          disabled={isGenerating || !question.trim() || (!sourceFile && !sourceText.trim())}
-                          className="font-inter font-medium self-end"
-                        >
-                          {isGenerating ? (
-                            "Researching..."
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4" />
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Conversation History */}
-                {ragMessages.length > 0 && (
-                  <Card className="shadow-soft border-0">
+              <TabsContent value="rag" className="h-[calc(100vh-300px)] flex flex-col">
+                {/* Source Input Section - Only show if no source is set */}
+                {!currentSourceName && (
+                  <Card className="shadow-soft border-0 mb-4">
                     <CardHeader>
-                      <CardTitle className="font-playfair font-medium flex items-center justify-between">
-                        Conversation History
+                      <CardTitle className="font-playfair font-medium">Set Up Your Research</CardTitle>
+                      <CardDescription className="font-inter">
+                        Upload a source document or paste text to start asking questions
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Source Input - Side by Side */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {/* File Upload */}
+                        <div>
+                          <label className="text-sm font-inter font-medium text-foreground mb-2 block">
+                            Upload Document
+                          </label>
+                          <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+                            <input
+                              type="file"
+                              accept=".pdf,.txt"
+                              onChange={(e) => handleSourceFileChange(e.target.files?.[0] || null)}
+                              className="hidden"
+                              id="source-upload"
+                            />
+                            <label htmlFor="source-upload" className="cursor-pointer">
+                              <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                              <p className="font-inter text-sm text-muted-foreground">
+                                {sourceFile ? sourceFile.name : "Upload PDF or TXT file"}
+                              </p>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Text Input */}
+                        <div>
+                          <label className="text-sm font-inter font-medium text-foreground mb-2 block">
+                            Or Paste Text
+                          </label>
+                          <Textarea
+                            placeholder="Paste your source text here..."
+                            value={sourceText}
+                            onChange={(e) => handleSourceTextChange(e.target.value)}
+                            className="min-h-32 font-inter"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Current Source Indicator */}
+                {currentSourceName && (
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg mb-4">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span className="font-inter text-sm font-medium">
+                        Researching: {currentSourceName}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowSourceText(!showSourceText)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        {showSourceText ? 'Hide' : 'View'} Source
+                      </Button>
+                      {ragMessages.length > 0 && (
                         <Button variant="outline" size="sm" onClick={clearRAGConversation}>
                           <X className="h-4 w-4 mr-2" />
-                          Clear
+                          New Chat
                         </Button>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Source Text Dropdown */}
+                {currentSourceName && showSourceText && (
+                  <div className="mb-4 p-4 bg-muted/20 rounded-lg border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-inter text-sm font-medium text-foreground">Source Material</h4>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => copyToClipboard(sourceText)}
+                        className="h-6 px-2 text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy All
+                      </Button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      <p className="font-inter text-sm text-muted-foreground leading-relaxed">
+                        {sourceText}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Chat Interface */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  {/* Messages Area */}
+                  <div className="flex-1 overflow-hidden">
+                    {ragMessages.length === 0 && currentSourceName ? (
+                      <div className="h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <h3 className="font-playfair font-medium text-lg mb-2">Ready to Research</h3>
+                          <p className="text-muted-foreground font-inter">
+                            Ask a question about your source material below
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        ref={chatContainerRef}
+                        className="h-full overflow-y-auto space-y-4 p-4"
+                      >
                         {ragMessages.map((message) => (
                           <div
                             key={message.id}
                             className={`flex ${message.type === 'question' ? 'justify-end' : 'justify-start'}`}
                           >
                             <div
-                              className={`max-w-[80%] p-3 rounded-lg font-inter ${
+                              className={`max-w-[80%] p-4 rounded-lg font-inter ${
                                 message.type === 'question'
                                   ? 'bg-primary text-primary-foreground'
                                   : 'bg-muted/30 text-foreground'
                               }`}
                             >
-                              <div className="text-sm font-medium mb-1">
+                              <div className="text-sm font-medium mb-2">
                                 {message.type === 'question' ? 'You' : 'PersonaPen'}
                               </div>
-                              <div className="text-sm">{message.content}</div>
-                              <div className="text-xs opacity-70 mt-2">
-                                {message.timestamp.toLocaleTimeString()}
+                              <div className="text-sm leading-relaxed">{message.content}</div>
+                              <div className="flex items-center justify-between mt-3">
+                                <div className="text-xs opacity-70">
+                                  {message.timestamp.toLocaleTimeString()}
+                                </div>
+                                {message.type === 'answer' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyToClipboard(message.content)}
+                                    className="h-6 px-2 text-xs opacity-70 hover:opacity-100"
+                                  >
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </div>
                         ))}
                         {isGenerating && (
                           <div className="flex justify-start">
-                            <div className="bg-muted/30 p-3 rounded-lg font-inter max-w-[80%]">
-                              <div className="text-sm font-medium mb-1">PersonaPen</div>
+                            <div className="bg-muted/30 p-4 rounded-lg font-inter max-w-[80%]">
+                              <div className="text-sm font-medium mb-2">PersonaPen</div>
                               <div className="text-sm text-muted-foreground">
                                 Researching your question...
                               </div>
@@ -595,9 +656,65 @@ const Dashboard = () => {
                           </div>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                    )}
+                  </div>
+
+                  {/* Input Area - Fixed at Bottom */}
+                  {currentSourceName && (
+                    <div className="border-t border-border bg-card p-4">
+                      {/* Scroll to Bottom Button - Centered above input */}
+                      {showScrollButton && (
+                        <div className="flex justify-center mb-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={scrollToBottom}
+                            className="rounded-full w-8 h-8 p-0 shadow-md"
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex space-x-2">
+                        <Textarea
+                          placeholder="Ask a question about your source material..."
+                          value={question}
+                          onChange={(e) => setQuestion(e.target.value)}
+                          className="min-h-12 max-h-32 font-inter resize-none"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                              e.preventDefault();
+                              handleRAGQuery();
+                            }
+                          }}
+                        />
+                        <div className="flex flex-col space-y-2">
+                          <Button 
+                            variant="academic" 
+                            onClick={handleRAGQuery}
+                            disabled={isGenerating || !question.trim()}
+                            className="font-inter font-medium h-12 w-12 p-0"
+                          >
+                            {isGenerating ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                          </Button>
+                          {isGenerating && (
+                            <Button 
+                              variant="outline" 
+                              onClick={cancelGeneration}
+                              className="font-inter font-medium h-12 w-12 p-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
 
               <TabsContent value="documents" className="space-y-6">
