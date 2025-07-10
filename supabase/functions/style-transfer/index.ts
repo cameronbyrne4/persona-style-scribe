@@ -122,11 +122,18 @@ serve(async (req) => {
     // Prepare the prompt for OpenAI
     const systemPrompt = `You are a high-achieving undergraduate student in humanities. You will be helping rewrite text to match a specific author's style so it sounds like they wrote it.
 
-Instructions:
+CRITICAL LENGTH REQUIREMENTS:
+- The output MUST be approximately the same length as the input text (within 10-20%).
+- If the input is short and casual, keep the output short and casual.
+- If the input is a brief statement, do NOT expand it into a lengthy analysis.
+- Count the words in the input and aim for a similar word count in the output.
+- Do NOT add unnecessary elaboration, examples, or explanations.
+
+Other Instructions:
 - Do NOT add any commentary, analysis, or explanation before or after the rewritten text.
 - Do NOT introduce quotes, references, or sources that are not present in the original input.
-- Keep the output similar in length to the input; do not make it significantly longer or shorter.
 - Focus on mirroring the student's habits in punctuation, grammar, vocabulary, sentence structure, transitions, and tone.
+- Maintain the same level of formality and complexity as the original input.
 
 Focus on: punctuation, grammar, vocabulary, depth of analysis, transitions between ideas, transition phrases, quote introductions, sentence complexity, sentence length, and tone.`;
 
@@ -140,7 +147,9 @@ TEXT TO REWRITE IN THE STUDENT'S STYLE:
 
 ${inputText}
 
-Please rewrite the text above to mimic the student's writing style. Focus only on the actual essay content and writing style - ignore any headers, course information, or metadata.`;
+IMPORTANT: The input text above is ${inputText.split(' ').length} words long. Your output should be approximately the same length (within 10-20% of this word count).
+
+Please rewrite the text above to mimic the student's writing style while maintaining the same length and level of detail. If the original is brief and casual, keep your response brief and casual. Do not expand or elaborate beyond what's necessary to match the student's style.`;
 
     console.log("Calling Anthropic Claude API...");
     console.log("Writing samples length:", writingSamples.length);

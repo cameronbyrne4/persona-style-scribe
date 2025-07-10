@@ -262,7 +262,7 @@ const ResearchAnswer = () => {
             <CardHeader>
               <CardTitle className="font-playfair font-medium">Research Chat</CardTitle>
               <CardDescription className="font-inter">
-                Ask questions about your source material
+                Generate answers to your questions about your reading passages in your voice
               </CardDescription>
             </CardHeader>
             <CardContent>

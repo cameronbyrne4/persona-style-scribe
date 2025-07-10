@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Trash2, Upload, Plus } from "lucide-react";
+import { FileText, Trash2, Upload, Plus, Circle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import UploadModal from "@/components/UploadModal";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 interface MyDocumentsProps {
   hasCompletedOnboarding: boolean;
@@ -17,42 +18,40 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
   const [user, setUser] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const { toast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  // Load user and documents on component mount
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        // Get current user
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
-          
-          // Load user's documents
-          const { data: docs, error } = await supabase
-            .from('documents')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .order('uploaded_at', { ascending: false });
-          
-          if (error) {
-            console.error('Error loading documents:', error);
-            toast({
-              title: "Error loading documents",
-              description: error.message,
-              variant: "destructive",
-            });
-          } else {
-            setDocuments(docs || []);
-          }
+  // Extracted fetchDocuments for reuse
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        const { data: docs, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('uploaded_at', { ascending: false });
+        if (error) {
+          console.error('Error loading documents:', error);
+          toast({
+            title: "Error loading documents",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          setDocuments(docs || []);
         }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadUserData();
+  useEffect(() => {
+    fetchDocuments();
   }, [toast]);
 
   // Calculate style profile stats
@@ -65,31 +64,28 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
                        documents.length >= 1 && totalWords >= 1000 ? "Fair" : "Poor";
 
   const handleDeleteDocument = async (docId: string) => {
-    if (confirm('Are you sure you want to delete this document?')) {
-      const { error } = await supabase
-        .from('documents')
-        .delete()
-        .eq('id', docId);
-      
-      if (error) {
-        toast({
-          title: "Error deleting document",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        setDocuments(documents.filter(d => d.id !== docId));
-        toast({
-          title: "Document deleted",
-          description: "Document removed from your style profile",
-        });
-      }
+    const { error } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', docId);
+    if (error) {
+      toast({
+        title: "Error deleting document",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setDocuments(documents.filter(d => d.id !== docId));
+      toast({
+        title: "Document deleted",
+        description: "Document removed from your style profile",
+      });
     }
+    setDeleteTarget(null);
   };
 
   const handleUploadSuccess = () => {
-    // Refresh the documents list
-    window.location.reload();
+    fetchDocuments(); // Just refresh the list, do not reload or redirect
   };
 
   return (
@@ -98,7 +94,14 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
         {/* Style Profile Card */}
         <Card className="shadow-soft border-0">
           <CardHeader>
-            <CardTitle className="font-playfair font-medium">Your Style Profile</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CardTitle className="font-playfair font-medium">Your Style Profile</CardTitle>
+                <Badge variant="outline" className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 border-green-200">
+                  <Circle className="h-2 w-2 fill-green-500 text-green-500 mr-1" /> Active
+                </Badge>
+              </div>
+            </div>
             <CardDescription className="font-inter">
               Overview of your writing samples and style strength
             </CardDescription>
@@ -133,13 +136,7 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
                     </span>
                   </div>
                 </div>
-
-                {/* Status Badge */}
-                <div className="flex items-center justify-center">
-                  <Badge variant="secondary" className="font-inter text-lg px-4 py-2">
-                    Style Profile Active
-                  </Badge>
-                </div>
+                {/* Removed large status badge */}
               </div>
             )}
           </CardContent>
@@ -150,8 +147,8 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="font-playfair font-medium">Your Writing Samples</CardTitle>
-                <CardDescription className="font-inter">
+                <CardTitle className="font-playfair font-medium mb-2">Your Writing Samples</CardTitle>
+                <CardDescription className="font-inter mt-2">
                   View and manage the documents that define your writing style
                 </CardDescription>
               </div>
@@ -216,13 +213,28 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
                         <span className="text-xs text-muted-foreground font-inter">
                           {new Date(doc.uploaded_at).toLocaleDateString()}
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteDocument(doc.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Popover open={deleteTarget === doc.id} onOpenChange={(open) => setDeleteTarget(open ? doc.id : null)}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Delete document"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-48">
+                            <div className="text-sm font-inter mb-2">Delete this document?</div>
+                            <div className="flex gap-2 justify-center">
+                              <Button size="sm" variant="outline" onClick={() => setDeleteTarget(null)}>
+                                Cancel
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument(doc.id)}>
+                                Delete
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
                     <div className="text-sm text-muted-foreground font-inter">

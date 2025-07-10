@@ -219,8 +219,8 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-elegant border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
-            <CardTitle className="font-playfair font-medium">Add Writing Samples</CardTitle>
-            <CardDescription className="font-inter">
+            <CardTitle className="font-playfair font-medium mb-2">Add Writing Samples</CardTitle>
+            <CardDescription className="font-inter mt-2">
               Upload additional writing samples to improve your style profile
             </CardDescription>
           </div>
@@ -237,7 +237,7 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
           <div className="grid md:grid-cols-2 gap-4">
             {/* File Upload */}
             <div>
-              <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+              <div className="border-2 border-dashed border-border rounded-lg p-5 text-center hover:border-primary/50 transition-colors">
                 <input
                   type="file"
                   multiple
