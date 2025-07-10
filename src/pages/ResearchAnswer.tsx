@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { Copy, Upload, FileText, Send, X, ChevronDown, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 
 // Add interface for RAG conversation messages
 interface RAGMessage {
@@ -22,7 +23,10 @@ const ResearchAnswer = () => {
   const [currentSourceName, setCurrentSourceName] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showSourceText, setShowSourceText] = useState(false);
+  const [answerLength, setAnswerLength] = useState<'short' | 'medium' | 'long'>('medium');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const handleRAGQuery = async () => {
@@ -60,19 +64,45 @@ const ResearchAnswer = () => {
         }
       }
 
-      // TODO: Implement RAG API call here
-      // For now, simulate a response
-      setTimeout(() => {
-        const answerMessage: RAGMessage = {
-          id: (Date.now() + 1).toString(),
-          type: 'answer',
-          content: `This is a simulated response to: "${question}". In a real implementation, this would be the AI's answer based on the source material.`,
-          timestamp: new Date()
-        };
-        setRagMessages(prev => [...prev, answerMessage]);
-        setIsGenerating(false);
-        setQuestion("");
-      }, 2000);
+      // Get the user's JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      if (!token) {
+        throw new Error("No authentication token available");
+      }
+      
+      // Make the actual RAG API call
+      const response = await fetch('https://kiusphbzbtkdykmnvgmq.supabase.co/functions/v1/rag-qa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question: question,
+          sourceText: sourceContent,
+          answerLength: answerLength,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log("Edge Function error details:", errorData);
+        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+
+      const answerMessage: RAGMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'answer',
+        content: data.answer,
+        timestamp: new Date()
+      };
+      setRagMessages(prev => [...prev, answerMessage]);
+      setIsGenerating(false);
+      setQuestion("");
       
     } catch (error) {
       console.error('RAG query error:', error);
@@ -111,6 +141,18 @@ const ResearchAnswer = () => {
       return () => container.removeEventListener('scroll', handleScroll);
     }
   }, []);
+
+  // Close dropdown if clicking outside
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
 
   const handleSourceFileChange = (file: File | null) => {
     setSourceFile(file);
@@ -212,17 +254,86 @@ const ResearchAnswer = () => {
               <span className="font-inter text-sm font-medium">
                 Researching: {currentSourceName}
               </span>
-            </div>
-            <div className="flex items-center space-x-2">
+              {/* Move View Source button here */}
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setShowSourceText(!showSourceText)}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground ml-2"
               >
                 <Eye className="h-4 w-4 mr-2" />
                 {showSourceText ? 'Hide' : 'View'} Source
               </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              {/* Response Length Label */}
+              <span className="font-inter text-sm text-muted-foreground mr-1">Response Length:</span>
+              {/* Answer Length Dropdown */}
+              <div className="relative inline-block mr-2" ref={dropdownRef}>
+                <button
+                  className="flex items-center px-4 py-1.5 rounded-full border border-border bg-card font-playfair text-base font-bold shadow-sm transition hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[110px]"
+                  style={{ minHeight: '38px' }}
+                  onClick={() => setDropdownOpen((o) => !o)}
+                  type="button"
+                >
+                  {answerLength.charAt(0).toUpperCase() + answerLength.slice(1)}
+                  <ChevronDown className="ml-2 w-4 h-4" />
+                </button>
+                {dropdownOpen && (
+                  <div className="absolute z-20 mt-2 right-0 min-w-[450px] bg-background rounded-2xl shadow-lg p-3 flex gap-3 border border-border" style={{marginRight: '0.5rem'}}>
+                    {[
+                      { value: "short", label: "Short", bars: 2 },
+                      { value: "medium", label: "Medium", bars: 4 },
+                      { value: "long", label: "Long", bars: 6 },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setAnswerLength(opt.value as 'short' | 'medium' | 'long');
+                          setDropdownOpen(false);
+                        }}
+                        className={`
+                          flex-1 rounded-xl border transition-colors flex flex-col items-start px-4 py-3 min-w-[150px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30
+                          ${answerLength === opt.value
+                            ? "border-primary bg-primary/5 shadow-[0_0_0_2px_rgba(22,101,52,0.15)]"
+                            : "border-border bg-card hover:bg-muted/30"}
+                        `}
+                        style={{ fontFamily: "Inter, sans-serif", maxWidth: 180 }}
+                      >
+                        <div className="flex items-center w-full mb-2">
+                          <span className="font-playfair font-bold text-base mr-2">{opt.label}</span>
+                          <span
+                            className={`ml-auto flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
+                              ${answerLength === opt.value
+                                ? "border-primary bg-primary/20"
+                                : "border-border bg-background"}`}
+                            style={{ minWidth: 20, minHeight: 20 }}
+                          >
+                            {answerLength === opt.value && (
+                              <span className="block w-3 h-3 rounded-full bg-primary" />
+                            )}
+                          </span>
+                        </div>
+                        {/* Visual bars */}
+                        <div className="flex flex-col gap-1 mt-1 w-full">
+                          {Array.from({ length: opt.bars }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="h-2 rounded bg-primary/80"
+                              style={{
+                                width: `${80 + Math.random() * 20}%`,
+                                opacity: 0.7 + 0.3 * (i / opt.bars),
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* End Answer Length Dropdown */}
               {ragMessages.length > 0 && (
                 <Button variant="outline" size="sm" onClick={clearRAGConversation}>
                   <X className="h-4 w-4 mr-2" />

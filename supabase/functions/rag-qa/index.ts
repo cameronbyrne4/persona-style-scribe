@@ -33,7 +33,7 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     
     // Parse request body
-    const { question, sourceText, sourceFile } = await req.json();
+    const { question, sourceText, sourceFile, answerLength = 'medium' } = await req.json();
     
     if (!question || !question.trim()) {
       return new Response(JSON.stringify({ error: "Question is required" }), {
@@ -208,33 +208,53 @@ serve(async (req) => {
     }).join('\n\n');
 
     // Prepare the RAG prompt
-    const systemPrompt = `You are a high-achieving undergraduate student in humanities. You will be answering questions based on provided source material while writing in a specific author's style.
+    const systemPrompt = `You are an expert linguistic analyst and research assistant. Your purpose is to answer questions based on provided source material while writing in a specific author's unique style.
 
-Instructions:
-- Answer the question using ONLY information from the provided source material
-- If the source material doesn't contain enough information to answer the question, say so clearly
-- Write the answer in the student's unique writing style (vocabulary, sentence structure, tone, etc.)
-- Do NOT add external knowledge unless it's minimal background context that helps explain the source material
-- Keep the answer focused and academically rigorous
-- Use the student's typical transition phrases, quote introductions, and analytical depth
+You will be given three pieces of text: a writing sample to learn style from, source material to answer from, and a question to answer.
 
-Focus on: punctuation, grammar, vocabulary, depth of analysis, transitions between ideas, transition phrases, quote introductions, sentence complexity, sentence length, and tone.`;
+1. **Analyze the Writing Sample:** First, you will silently and internally analyze the text provided within the \`<style>\` tags. You are to deconstruct the author's stylistic fingerprint, paying close attention to:
+   * **Vocabulary:** Extract and memorize the specific vocabulary, word choices, and terminology used by the author. You MUST use ONLY words that appear in the sample text or very close synonyms of those words. Do NOT introduce any vocabulary that is more sophisticated or complex than what the author uses.
+   * **Sentence Structure:** Average sentence length, rhythm, and the mix of simple, compound, and complex sentences.
+   * **Punctuation:** Common habits, such as the use of em-dashes, semicolons, or Oxford commas.
+   * **Tone:** The overall voice (e.g., academic, casual, critical, enthusiastic).
+   * **Transitions:** How ideas are linked (e.g., "Furthermore," "However," "On the other hand,").
 
-    const userPrompt = `I will share with you:
-1. Sample writings from the student so you can mimic their writing style
-2. Source material to answer the question from
-3. The specific question to answer
+2. **Answer the Question:** Next, you will answer the question provided within the \`<question>\` tags using ONLY information from the source material within the \`<source>\` tags. You must apply the precise stylistic fingerprint you analyzed in the first step. **CRITICAL:** Do NOT reference, mention, or incorporate any topics, subjects, or content from the sample text. The sample text is ONLY for learning writing style - ignore its subject matter completely.
 
-STUDENT'S WRITING SAMPLE:
+**CRITICAL OUTPUT REQUIREMENTS:**
+
+* **Vocabulary Constraint:** You MUST use ONLY vocabulary that appears in the sample text or very close synonyms. Do NOT introduce any words that are more sophisticated, complex, or academic than what the author uses in their writing samples. If the author uses simple, everyday language, stick to simple, everyday language. **CRITICAL:** Match the simplicity and formality level of the question, not the writing samples. If the question is casual and simple, keep the answer casual and simple regardless of the sample text's complexity.
+* **Source Material Only:** Answer using ONLY information from the provided source material. Do NOT add external knowledge, background context, or information not present in the source.
+* **Content Isolation:** Do NOT reference, mention, or incorporate any topics, subjects, or content from the writing sample. The sample text is ONLY for learning writing style - ignore its subject matter completely. **CRITICAL:** If the sample text discusses South Asian topics, food practices, or any other subjects, do NOT mention these in your answer. Focus only on the question and source material content. **ABSOLUTE RULE:** Never use phrases like "In South Asian fashion" or reference any topics from the sample text. The sample text's content is completely irrelevant to your answer.
+* **Length Constraint:**
+  - For a short answer, you MUST NOT exceed 3 sentences. Your answer must be complete and well-structured within this limit. If you cannot answer fully, summarize or condense as needed, but do not exceed the sentence limit. Do not cut off mid-idea; instead, provide a concise, self-contained answer.
+  - For a medium answer, you MUST NOT exceed 5 sentences. Your answer must be complete and well-structured within this limit. If you cannot answer fully, summarize or condense as needed, but do not exceed the sentence limit. Do not cut off mid-idea.
+  - For a long answer, you MUST NOT exceed 10 sentences. Your answer must be complete and well-structured within this limit. If you cannot answer fully, summarize or condense as needed, but do not exceed the sentence limit. Do not cut off mid-idea.
+* **Output Purity:** Your entire output must consist ONLY of the answer. Do NOT include any commentary, explanations, analysis, apologies, or notes about your process. Do not enclose the output in quotes. Do not state what you have done.`;
+
+    // Build the length rule for the user prompt
+    let lengthRule = '';
+    if (answerLength === 'short') {
+      lengthRule = 'IMPORTANT: You MUST NOT exceed 3 sentences for a short answer. Your answer must be complete and well-structured within this limit. If you cannot answer fully, summarize or condense as needed, but do not exceed the sentence limit. Do not cut off mid-idea; instead, provide a concise, self-contained answer.';
+    } else if (answerLength === 'medium') {
+      lengthRule = 'IMPORTANT: You MUST NOT exceed 5 sentences for a medium answer. Your answer must be complete and well-structured within this limit. If you cannot answer fully, summarize or condense as needed, but do not exceed the sentence limit. Do not cut off mid-idea.';
+    } else if (answerLength === 'long') {
+      lengthRule = 'IMPORTANT: You MUST NOT exceed 10 sentences for a long answer. Your answer must be complete and well-structured within this limit. If you cannot answer fully, summarize or condense as needed, but do not exceed the sentence limit. Do not cut off mid-idea.';
+    }
+
+    const userPrompt = `<style>
 ${writingSamples}
+</style>
 
-SOURCE MATERIAL (relevant excerpts):
+<source>
 ${relevantChunks.join('\n\n---\n\n')}
+</source>
 
-QUESTION TO ANSWER:
+<question>
 ${question}
+</question>
 
-Please answer the question using only the provided source material, written in the student's unique style. If the source material doesn't contain enough information to answer the question, explain what information is missing.`;
+${lengthRule}\n\nAnswer using ONLY information from the source material, written in the author's style. If the source material doesn't contain enough information to answer the question, explain what information is missing.`;
 
     console.log("Calling Anthropic Claude API for RAG...");
     console.log("Writing samples length:", writingSamples.length);

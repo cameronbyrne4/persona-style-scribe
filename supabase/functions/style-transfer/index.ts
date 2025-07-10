@@ -119,37 +119,36 @@ serve(async (req) => {
       return text.trim();
     }).join('\n\n');
     
-    // Prepare the prompt for OpenAI
-    const systemPrompt = `You are a high-achieving undergraduate student in humanities. You will be helping rewrite text to match a specific author's style so it sounds like they wrote it.
+    // Prepare the prompt for AI
+    const systemPrompt = `You are an expert linguistic analyst and stylistic chameleon. Your purpose is to meticulously analyze a provided writing sample and then rewrite a new piece of text to perfectly match the original author's style in every discernible way.
 
-CRITICAL LENGTH REQUIREMENTS:
-- The output MUST be approximately the same length as the input text (within 10-20%).
-- If the input is short and casual, keep the output short and casual.
-- If the input is a brief statement, do NOT expand it into a lengthy analysis.
-- Count the words in the input and aim for a similar word count in the output.
-- Do NOT add unnecessary elaboration, examples, or explanations.
+You will be given two pieces of text: a sample to learn from, and a text to rewrite.
 
-Other Instructions:
-- Do NOT add any commentary, analysis, or explanation before or after the rewritten text.
-- Do NOT introduce quotes, references, or sources that are not present in the original input.
-- Focus on mirroring the student's habits in punctuation, grammar, vocabulary, sentence structure, transitions, and tone.
-- Maintain the same level of formality and complexity as the original input.
+1. **Analyze the Writing Sample:** First, you will silently and internally analyze the text provided within the \`<sample>\` tags. You are to deconstruct the author's stylistic fingerprint, paying close attention to:
+   * **Vocabulary:** Extract and memorize the specific vocabulary, word choices, and terminology used by the author. You MUST use ONLY words that appear in the sample text or very close synonyms of those words. Do NOT introduce any vocabulary that is more sophisticated or complex than what the author uses.
+   * **Sentence Structure:** Average sentence length, rhythm, and the mix of simple, compound, and complex sentences.
+   * **Punctuation:** Common habits, such as the use of em-dashes, semicolons, or Oxford commas.
+   * **Tone:** The overall voice (e.g., academic, casual, critical, enthusiastic).
+   * **Transitions:** How ideas are linked (e.g., "Furthermore," "However," "On the other hand,").
 
-Focus on: punctuation, grammar, vocabulary, depth of analysis, transitions between ideas, transition phrases, quote introductions, sentence complexity, sentence length, and tone.`;
+2. **Rewrite the Target Text:** Next, you will rewrite the text provided within the \`<rewrite>\` tags. You must apply the precise stylistic fingerprint you analyzed in the first step. The goal is for the new text to sound as if the original author wrote it. **CRITICAL:** Do NOT reference, mention, or incorporate any topics, subjects, or content from the sample text. The sample text is ONLY for learning writing style - ignore its subject matter completely.
 
-    const userPrompt = `I will share with you sample writings from the student so you can mimic their writing style.
+**CRITICAL OUTPUT REQUIREMENTS:**
 
-STUDENT'S WRITING SAMPLE:
+* **Vocabulary Constraint:** You MUST use ONLY vocabulary that appears in the sample text or very close synonyms. Do NOT introduce any words that are more sophisticated, complex, or academic than what the author uses in their writing samples. If the author uses simple, everyday language, stick to simple, everyday language. **CRITICAL:** Match the simplicity and formality level of the input text, not the writing samples. If the input is casual and simple, keep the output casual and simple regardless of the sample text's complexity.
+* **Length Constraint:** The word count of your rewritten text MUST be within 10-20% of the word count of the original text in the \`<rewrite>\` tags. You MUST NOT exceed this limit. Your output must be complete and well-structured within this constraint. If you cannot rewrite fully within the limit, summarize or condense as needed, but do not exceed the word count limit. Do not cut off mid-idea; instead, provide a concise, self-contained rewrite.
+* **Content Fidelity:** Preserve the core meaning, information, and level of detail of the original text. Do not add or invent any information. **CRITICAL:** Do NOT introduce any topics, subjects, or references from the sample text. The sample text is for style only - its content is irrelevant.
+* **Output Purity:** Your entire output must consist ONLY of the rewritten text. Do NOT include any commentary, explanations, analysis, apologies, or notes about your process. Do not enclose the output in quotes. Do not state what you have done.`;
 
+    const userPrompt = `<sample>
 ${writingSamples}
+</sample>
 
-TEXT TO REWRITE IN THE STUDENT'S STYLE:
-
+<rewrite>
 ${inputText}
+</rewrite>
 
-IMPORTANT: The input text above is ${inputText.split(' ').length} words long. Your output should be approximately the same length (within 10-20% of this word count).
-
-Please rewrite the text above to mimic the student's writing style while maintaining the same length and level of detail. If the original is brief and casual, keep your response brief and casual. Do not expand or elaborate beyond what's necessary to match the student's style.`;
+IMPORTANT: The text to rewrite is ${inputText.split(' ').length} words long. Your output MUST be within 10-20% of this word count (${Math.round(inputText.split(' ').length * 0.8)}-${Math.round(inputText.split(' ').length * 1.2)} words). You MUST NOT exceed this limit. Your output must be complete and well-structured within this constraint. If you cannot rewrite fully within the limit, summarize or condense as needed, but do not exceed the word count limit. Do not cut off mid-idea; instead, provide a concise, self-contained rewrite.`;
 
     console.log("Calling Anthropic Claude API...");
     console.log("Writing samples length:", writingSamples.length);
