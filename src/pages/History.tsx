@@ -225,7 +225,7 @@ const History = () => {
                           </div>
                           {expanded && (
                             <div className="space-y-4 mt-2">
-                              {item.items.map((msg, i) => (
+                              {[...item.items].reverse().map((msg, i) => (
                                 <Card key={msg.id} className="border border-blue-900/20 bg-white">
                                   <CardContent className="p-4">
                                     <div className="flex items-center justify-between mb-2">
