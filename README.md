@@ -59,6 +59,47 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Vercel Analytics
+
+## Analytics Setup
+
+This project includes Vercel Analytics for tracking user interactions and application performance.
+
+### Configuration
+
+1. **Environment Variables**: Create a `.env` file in the root directory with:
+   ```
+   VITE_VERCEL_ANALYTICS_ENABLED=1
+   ```
+
+2. **Usage**: The analytics are automatically initialized in `src/main.tsx`. You can use the analytics utility in `src/lib/analytics.ts` to track custom events:
+
+   ```typescript
+   import { analytics } from '@/lib/analytics';
+   
+   // Track feature usage
+   analytics.trackFeature('button_clicked', { button: 'upload' });
+   
+   // Track page views
+   analytics.trackPageView('/dashboard');
+   
+   // Track errors
+   analytics.trackError('upload_failed', { error: 'network_error' });
+   ```
+
+3. **Available Tracking Functions**:
+   - `trackPageView(page: string)` - Track page views
+   - `trackAction(action: string, properties?: Record<string, any>)` - Track user actions
+   - `trackFeature(feature: string, properties?: Record<string, any>)` - Track feature usage
+   - `trackError(error: string, properties?: Record<string, any>)` - Track errors
+   - `trackDocumentUpload(fileType: string, fileSize: number)` - Track document uploads
+   - `trackStyleTransfer(inputLength: number, outputLength: number)` - Track style transfers
+   - `trackResearchAnswer(questionLength: number, answerLength: number)` - Track research answers
+   - `trackEngagement(action: string, duration?: number)` - Track user engagement
+
+### Privacy
+
+Analytics are disabled by default in development mode. Set `VITE_VERCEL_ANALYTICS_ENABLED=0` to disable analytics completely.
 
 ## How can I deploy this project?
 

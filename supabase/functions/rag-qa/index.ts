@@ -4,6 +4,43 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 console.log("RAG QA function loaded");
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute per user
+
+// In-memory rate limit store (in production, you'd use Redis or database)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+// Rate limiting function
+const checkRateLimit = (userId: string): { allowed: boolean; remaining: number; resetTime: number } => {
+  const now = Date.now();
+  const key = `rag_qa:${userId}`;
+  const userLimit = rateLimitStore.get(key);
+
+  if (!userLimit || now > userLimit.resetTime) {
+    // Reset or initialize rate limit
+    rateLimitStore.set(key, {
+      count: 1,
+      resetTime: now + RATE_LIMIT_WINDOW
+    });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetTime: now + RATE_LIMIT_WINDOW };
+  }
+
+  if (userLimit.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, remaining: 0, resetTime: userLimit.resetTime };
+  }
+
+  // Increment count
+  userLimit.count++;
+  rateLimitStore.set(key, userLimit);
+  
+  return { 
+    allowed: true, 
+    remaining: RATE_LIMIT_MAX_REQUESTS - userLimit.count, 
+    resetTime: userLimit.resetTime 
+  };
+};
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -78,6 +115,23 @@ serve(async (req) => {
     }
     
     console.log("User verified:", verifiedUser.id);
+    
+    // Check rate limit
+    const rateLimit = checkRateLimit(verifiedUser.id);
+    if (!rateLimit.allowed) {
+      return new Response(JSON.stringify({ 
+        error: "Rate limit exceeded. Please wait before making another request.",
+        resetTime: rateLimit.resetTime
+      }), {
+        status: 429,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+        },
+      });
+    }
     
     // Fetch user's documents to understand their writing style
     console.log("Fetching user documents...");
@@ -367,6 +421,8 @@ ${lengthRule}\n\nAnswer using ONLY information from the source material, written
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json',
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        'X-RateLimit-Reset': rateLimit.resetTime.toString(),
       },
     });
 

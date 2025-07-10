@@ -6,6 +6,7 @@ import { FileText, PenTool, Search, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import UploadModal from "@/components/UploadModal";
+import { analytics } from "@/lib/analytics";
 
 interface DashboardProps {
   hasDocuments: boolean;
@@ -154,7 +155,13 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
                 <Card 
                   key={feature.path}
                   className="shadow-soft border-0 hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => navigate(feature.path)}
+                  onClick={() => {
+                    analytics.trackFeature('dashboard_feature_clicked', { 
+                      feature: feature.title.toLowerCase().replace(/\s+/g, '_'),
+                      path: feature.path 
+                    });
+                    navigate(feature.path);
+                  }}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
@@ -188,7 +195,10 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
             <CardContent>
               <Button 
                 variant="academic" 
-                onClick={() => setShowUploadModal(true)}
+                onClick={() => {
+                  analytics.trackFeature('upload_modal_opened', { source: 'dashboard' });
+                  setShowUploadModal(true);
+                }}
                 className="font-inter"
               >
                 <FileText className="h-4 w-4 mr-2" />
