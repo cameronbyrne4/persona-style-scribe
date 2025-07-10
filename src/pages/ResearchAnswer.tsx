@@ -23,11 +23,71 @@ const ResearchAnswer = () => {
   const [currentSourceName, setCurrentSourceName] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showSourceText, setShowSourceText] = useState(false);
-  const [answerLength, setAnswerLength] = useState<'short' | 'medium' | 'long'>('medium');
+  const [answerLength, setAnswerLength] = useState<'short' | 'medium' | 'long'>(() => {
+    // Try to load from localStorage, default to 'medium'
+    const saved = localStorage.getItem('personapen_research_answer_length');
+    if (saved === 'short' || saved === 'medium' || saved === 'long') return saved;
+    return 'medium';
+  });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Load chat state from localStorage on mount
+  useEffect(() => {
+    const savedChat = localStorage.getItem('personapen_research_chat');
+    const savedSource = localStorage.getItem('personapen_research_source');
+    const savedSourceName = localStorage.getItem('personapen_research_source_name');
+    
+    if (savedChat) {
+      try {
+        const parsedChat = JSON.parse(savedChat);
+        setRagMessages(parsedChat.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        })));
+      } catch (error) {
+        console.error('Error parsing saved chat:', error);
+      }
+    }
+    
+    if (savedSource) {
+      setSourceText(savedSource);
+    }
+    
+    if (savedSourceName) {
+      setCurrentSourceName(savedSourceName);
+    }
+  }, []);
+
+  // Save chat state to localStorage whenever it changes
+  useEffect(() => {
+    if (ragMessages.length > 0) {
+      localStorage.setItem('personapen_research_chat', JSON.stringify(ragMessages));
+    }
+  }, [ragMessages]);
+
+  // Save source text to localStorage
+  useEffect(() => {
+    if (sourceText) {
+      localStorage.setItem('personapen_research_source', sourceText);
+    }
+  }, [sourceText]);
+
+  // Save source name to localStorage
+  useEffect(() => {
+    if (currentSourceName) {
+      localStorage.setItem('personapen_research_source_name', currentSourceName);
+    }
+  }, [currentSourceName]);
+
+  // Save answer length to localStorage
+  useEffect(() => {
+    if (answerLength) {
+      localStorage.setItem('personapen_research_answer_length', answerLength);
+    }
+  }, [answerLength]);
 
   const handleRAGQuery = async () => {
     if (!question.trim() || (!sourceFile && !sourceText.trim())) {
@@ -118,6 +178,13 @@ const ResearchAnswer = () => {
   const clearRAGConversation = () => {
     setRagMessages([]);
     setQuestion("");
+    setSourceText("");
+    setCurrentSourceName("");
+    setSourceFile(null);
+    // Clear localStorage
+    localStorage.removeItem('personapen_research_chat');
+    localStorage.removeItem('personapen_research_source');
+    localStorage.removeItem('personapen_research_source_name');
   };
 
   const scrollToBottom = () => {

@@ -136,7 +136,7 @@ You will be given two pieces of text: a sample to learn from, and a text to rewr
 **CRITICAL OUTPUT REQUIREMENTS:**
 
 * **Vocabulary Constraint:** You MUST use ONLY vocabulary that appears in the sample text or very close synonyms. Do NOT introduce any words that are more sophisticated, complex, or academic than what the author uses in their writing samples. If the author uses simple, everyday language, stick to simple, everyday language. **CRITICAL:** Match the simplicity and formality level of the input text, not the writing samples. If the input is casual and simple, keep the output casual and simple regardless of the sample text's complexity.
-* **Length Constraint:** The word count of your rewritten text MUST be within 10-20% of the word count of the original text in the \`<rewrite>\` tags. You MUST NOT exceed this limit. Your output must be complete and well-structured within this constraint. If you cannot rewrite fully within the limit, summarize or condense as needed, but do not exceed the word count limit. Do not cut off mid-idea; instead, provide a concise, self-contained rewrite.
+* **Length Parity:** The word count of your rewritten text MUST be within 10-20% of the word count of the original text in the \`<rewrite>\` tags. Do not add new concepts, arguments, or examples. If the original is brief, your output must be brief.
 * **Content Fidelity:** Preserve the core meaning, information, and level of detail of the original text. Do not add or invent any information. **CRITICAL:** Do NOT introduce any topics, subjects, or references from the sample text. The sample text is for style only - its content is irrelevant.
 * **Output Purity:** Your entire output must consist ONLY of the rewritten text. Do NOT include any commentary, explanations, analysis, apologies, or notes about your process. Do not enclose the output in quotes. Do not state what you have done.`;
 
@@ -148,7 +148,7 @@ ${writingSamples}
 ${inputText}
 </rewrite>
 
-IMPORTANT: The text to rewrite is ${inputText.split(' ').length} words long. Your output MUST be within 10-20% of this word count (${Math.round(inputText.split(' ').length * 0.8)}-${Math.round(inputText.split(' ').length * 1.2)} words). You MUST NOT exceed this limit. Your output must be complete and well-structured within this constraint. If you cannot rewrite fully within the limit, summarize or condense as needed, but do not exceed the word count limit. Do not cut off mid-idea; instead, provide a concise, self-contained rewrite.`;
+IMPORTANT: The text to rewrite is ${inputText.split(' ').length} words long. Your output must be of a similar length.`;
 
     console.log("Calling Anthropic Claude API...");
     console.log("Writing samples length:", writingSamples.length);

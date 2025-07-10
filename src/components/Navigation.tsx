@@ -76,6 +76,14 @@ const Navigation = () => {
               >
                 My Documents
               </Button>
+              <Button 
+                variant={isActive("/history") ? "academic" : "ghost"} 
+                size="sm"
+                onClick={() => navigate("/history")}
+                className="font-inter"
+              >
+                History
+              </Button>
             </nav>
           </div>
           {/* User Section */}

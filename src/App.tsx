@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { usePersistentRoute } from "@/hooks/use-persistent-route";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Onboarding from "./pages/Onboarding";
@@ -12,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import StyleTransfer from "./pages/StyleTransfer";
 import ResearchAnswer from "./pages/ResearchAnswer";
 import MyDocuments from "./pages/MyDocuments";
+import History from "./pages/History";
 import NotFound from "./pages/NotFound";
 import AuthenticatedLayout from "./components/AuthenticatedLayout";
 
@@ -23,6 +25,9 @@ function AuthGate() {
   const [hasDocuments, setHasDocuments] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const navigate = useNavigate();
+  
+  // Use persistent route hook
+  usePersistentRoute();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -123,6 +128,15 @@ function AuthGate() {
         user ? (
           <AuthenticatedLayout>
             <MyDocuments hasCompletedOnboarding={hasCompletedOnboarding} />
+          </AuthenticatedLayout>
+        ) : (
+          <Landing user={user} />
+        )
+      } />
+      <Route path="/history" element={
+        user ? (
+          <AuthenticatedLayout>
+            <History />
           </AuthenticatedLayout>
         ) : (
           <Landing user={user} />

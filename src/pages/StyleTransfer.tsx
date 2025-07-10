@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,10 +7,26 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 
 const StyleTransfer = () => {
-  const [inputText, setInputText] = useState("");
-  const [outputText, setOutputText] = useState("");
+  const [inputText, setInputText] = useState(() => {
+    return localStorage.getItem('personapen_style_input') || "";
+  });
+  const [outputText, setOutputText] = useState(() => {
+    return localStorage.getItem('personapen_style_output') || "";
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
+
+  // Persist inputText and outputText to localStorage
+  useEffect(() => {
+    localStorage.setItem('personapen_style_input', inputText);
+  }, [inputText]);
+  useEffect(() => {
+    if (outputText) {
+      localStorage.setItem('personapen_style_output', outputText);
+    } else {
+      localStorage.removeItem('personapen_style_output');
+    }
+  }, [outputText]);
 
   const handleStyleTransfer = async () => {
     if (!inputText.trim()) {
@@ -77,6 +93,14 @@ const StyleTransfer = () => {
     });
   };
 
+  // Optionally, add a clear function if you want to clear state on demand
+  const clearStyleTransfer = () => {
+    setInputText("");
+    setOutputText("");
+    localStorage.removeItem('personapen_style_input');
+    localStorage.removeItem('personapen_style_output');
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-4xl">
       <div className="space-y-6">
@@ -124,9 +148,11 @@ const StyleTransfer = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/30 p-4 rounded-lg font-inter text-foreground">
-                {outputText}
-              </div>
+              <Textarea
+                value={outputText}
+                onChange={e => setOutputText(e.target.value)}
+                className="bg-muted/30 p-4 rounded-lg font-inter text-foreground min-h-32"
+              />
             </CardContent>
           </Card>
         )}
