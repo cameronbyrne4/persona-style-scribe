@@ -15,10 +15,20 @@ import {
   Settings,
   History,
   ArrowRight,
-  Trash2
+  Trash2,
+  Send,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+
+// Add interface for RAG conversation messages
+interface RAGMessage {
+  id: string;
+  type: 'question' | 'answer';
+  content: string;
+  timestamp: Date;
+}
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("style-transfer");
@@ -26,10 +36,13 @@ const Dashboard = () => {
   const [outputText, setOutputText] = useState("");
   const [question, setQuestion] = useState("");
   const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourceText, setSourceText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ragMessages, setRagMessages] = useState<RAGMessage[]>([]);
+  const [currentSourceName, setCurrentSourceName] = useState("");
   const { toast } = useToast();
 
   // Load user and documents on component mount
@@ -136,10 +149,10 @@ const Dashboard = () => {
   };
 
   const handleRAGQuery = async () => {
-    if (!question.trim() || !sourceFile) {
+    if (!question.trim() || (!sourceFile && !sourceText.trim())) {
       toast({
         title: "Missing requirements",
-        description: "Please upload a source document and enter a question",
+        description: "Please upload a source document or paste text, and enter a question",
         variant: "destructive",
       });
       return;
@@ -147,15 +160,120 @@ const Dashboard = () => {
 
     setIsGenerating(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setOutputText(`Based on the provided source document "${sourceFile?.name}", here is a comprehensive answer to your question in your writing style: The analysis reveals that ${question} can be understood through multiple perspectives...`);
-      setIsGenerating(false);
+    // Add question to conversation
+    const questionMessage: RAGMessage = {
+      id: Date.now().toString(),
+      type: 'question',
+      content: question,
+      timestamp: new Date()
+    };
+    setRagMessages(prev => [...prev, questionMessage]);
+    
+    try {
+      // Get the user's JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      if (!token) {
+        throw new Error("No authentication token available");
+      }
+
+      // Prepare source content
+      let sourceContent = "";
+      if (sourceText) {
+        sourceContent = sourceText;
+      } else if (sourceFile) {
+        // Read the file content directly
+        // Note: For production, you might want to upload to Supabase Storage first
+        // and then pass the file path to the edge function
+        if (sourceFile.type === 'text/plain' || sourceFile.name.endsWith('.txt')) {
+          sourceContent = await sourceFile.text();
+        } else {
+          throw new Error("Only text files (.txt) are currently supported for file uploads");
+        }
+      }
+      
+      // Call the RAG Edge Function
+      const response = await fetch('https://kiusphbzbtkdykmnvgmq.supabase.co/functions/v1/rag-qa', {
+        method: 'POST',
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          question: question.trim(),
+          sourceText: sourceContent,
+          sourceFile: null // We're passing content directly for now
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log("RAG Edge Function error details:", errorData);
+        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      // Add answer to conversation
+      const answerMessage: RAGMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'answer',
+        content: result.answer,
+        timestamp: new Date()
+      };
+      setRagMessages(prev => [...prev, answerMessage]);
+      setQuestion(""); // Clear question input
+      
       toast({
         title: "Research complete",
-        description: "Your question has been answered using the source material",
+        description: `Answer generated using ${result.chunksUsed} relevant sections from your source material`,
       });
-    }, 3000);
+      
+    } catch (error) {
+      console.error('RAG query error:', error);
+      
+      // Add error message to conversation
+      const errorMessage: RAGMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'answer',
+        content: `Sorry, I encountered an error while processing your question: ${error instanceof Error ? error.message : "An unexpected error occurred"}`,
+        timestamp: new Date()
+      };
+      setRagMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "Research failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const clearRAGConversation = () => {
+    setRagMessages([]);
+    setSourceFile(null);
+    setSourceText("");
+    setCurrentSourceName("");
+    setQuestion("");
+  };
+
+  const handleSourceFileChange = (file: File | null) => {
+    setSourceFile(file);
+    if (file) {
+      setCurrentSourceName(file.name);
+      setSourceText(""); // Clear pasted text when file is uploaded
+    }
+  };
+
+  const handleSourceTextChange = (text: string) => {
+    setSourceText(text);
+    if (text.trim()) {
+      setSourceFile(null); // Clear file when text is pasted
+      setCurrentSourceName("Pasted Text");
+    }
   };
 
   const copyToClipboard = () => {
@@ -326,73 +444,156 @@ const Dashboard = () => {
               </TabsContent>
 
               <TabsContent value="rag" className="space-y-6">
+                {/* Source Input Section */}
                 <Card className="shadow-soft border-0">
                   <CardHeader>
                     <CardTitle className="font-playfair font-medium">Research & Answer</CardTitle>
                     <CardDescription className="font-inter">
-                      Upload a source document and ask questions to get answers in your style
+                      Upload a source document or paste text, then ask questions to get answers in your style
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-inter font-medium text-foreground mb-2 block">
-                        Source Document
-                      </label>
-                      <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
-                        <input
-                          type="file"
-                          accept=".pdf,.txt,.doc,.docx"
-                          onChange={(e) => setSourceFile(e.target.files?.[0] || null)}
-                          className="hidden"
-                          id="source-upload"
-                        />
-                        <label htmlFor="source-upload" className="cursor-pointer">
-                          <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                          <p className="font-inter text-sm text-muted-foreground">
-                            {sourceFile ? sourceFile.name : "Upload your source document"}
-                          </p>
+                    {/* Source Input - Side by Side */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* File Upload */}
+                      <div>
+                        <label className="text-sm font-inter font-medium text-foreground mb-2 block">
+                          Upload Document
                         </label>
+                        <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+                          <input
+                            type="file"
+                            accept=".pdf,.txt"
+                            onChange={(e) => handleSourceFileChange(e.target.files?.[0] || null)}
+                            className="hidden"
+                            id="source-upload"
+                          />
+                          <label htmlFor="source-upload" className="cursor-pointer">
+                            <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                            <p className="font-inter text-sm text-muted-foreground">
+                              {sourceFile ? sourceFile.name : "Upload PDF or TXT file"}
+                            </p>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Text Input */}
+                      <div>
+                        <label className="text-sm font-inter font-medium text-foreground mb-2 block">
+                          Or Paste Text
+                        </label>
+                        <Textarea
+                          placeholder="Paste your source text here..."
+                          value={sourceText}
+                          onChange={(e) => handleSourceTextChange(e.target.value)}
+                          className="min-h-32 font-inter"
+                        />
                       </div>
                     </div>
 
+                    {/* Current Source Indicator */}
+                    {currentSourceName && (
+                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-primary" />
+                          <span className="font-inter text-sm font-medium">
+                            Current Source: {currentSourceName}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearRAGConversation}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Question Input */}
                     <div>
                       <label className="text-sm font-inter font-medium text-foreground mb-2 block">
                         Your Question
                       </label>
-                      <Textarea
-                        placeholder="What would you like to know about the source material?"
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                        className="min-h-24 font-inter"
-                      />
+                      <div className="flex space-x-2">
+                        <Textarea
+                          placeholder="What would you like to know about the source material?"
+                          value={question}
+                          onChange={(e) => setQuestion(e.target.value)}
+                          className="min-h-24 font-inter flex-1"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                              e.preventDefault();
+                              handleRAGQuery();
+                            }
+                          }}
+                        />
+                        <Button 
+                          variant="academic" 
+                          onClick={handleRAGQuery}
+                          disabled={isGenerating || !question.trim() || (!sourceFile && !sourceText.trim())}
+                          className="font-inter font-medium self-end"
+                        >
+                          {isGenerating ? (
+                            "Researching..."
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4" />
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    
-                    <Button 
-                      variant="academic" 
-                      onClick={handleRAGQuery}
-                      disabled={isGenerating}
-                      className="font-inter font-medium"
-                    >
-                      {isGenerating ? "Researching..." : "Generate Answer"}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
                   </CardContent>
                 </Card>
 
-                {outputText && (
+                {/* Conversation History */}
+                {ragMessages.length > 0 && (
                   <Card className="shadow-soft border-0">
                     <CardHeader>
                       <CardTitle className="font-playfair font-medium flex items-center justify-between">
-                        Research Answer
-                        <Button variant="outline" size="sm" onClick={copyToClipboard}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy
+                        Conversation History
+                        <Button variant="outline" size="sm" onClick={clearRAGConversation}>
+                          <X className="h-4 w-4 mr-2" />
+                          Clear
                         </Button>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="bg-muted/30 p-4 rounded-lg font-inter text-foreground">
-                        {outputText}
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {ragMessages.map((message) => (
+                          <div
+                            key={message.id}
+                            className={`flex ${message.type === 'question' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[80%] p-3 rounded-lg font-inter ${
+                                message.type === 'question'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted/30 text-foreground'
+                              }`}
+                            >
+                              <div className="text-sm font-medium mb-1">
+                                {message.type === 'question' ? 'You' : 'PersonaPen'}
+                              </div>
+                              <div className="text-sm">{message.content}</div>
+                              <div className="text-xs opacity-70 mt-2">
+                                {message.timestamp.toLocaleTimeString()}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {isGenerating && (
+                          <div className="flex justify-start">
+                            <div className="bg-muted/30 p-3 rounded-lg font-inter max-w-[80%]">
+                              <div className="text-sm font-medium mb-1">PersonaPen</div>
+                              <div className="text-sm text-muted-foreground">
+                                Researching your question...
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
