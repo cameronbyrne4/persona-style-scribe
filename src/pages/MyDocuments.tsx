@@ -121,18 +121,25 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CardTitle className="font-playfair font-medium">Your Style Profile</CardTitle>
-                <Badge variant="outline" className={`flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${
-                  documents.length > 0 && totalWords > 0 
-                    ? 'bg-green-100 text-green-700 border-green-200' 
-                    : 'bg-red-100 text-red-700 border-red-200'
-                }`}>
-                  <Circle className={`h-2 w-2 mr-1 ${
+                {loading ? (
+                  <Badge variant="outline" className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-muted/50 text-muted-foreground border-muted">
+                    <div className="h-2 w-2 mr-1 rounded-full bg-muted-foreground animate-pulse"></div>
+                    Loading...
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className={`flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${
                     documents.length > 0 && totalWords > 0 
-                      ? 'fill-green-500 text-green-500' 
-                      : 'fill-red-500 text-red-500'
-                  }`} /> 
-                  {documents.length > 0 && totalWords > 0 ? 'Active' : 'Inactive'}
-                </Badge>
+                      ? 'bg-green-100 text-green-700 border-green-200' 
+                      : 'bg-red-100 text-red-700 border-red-200'
+                  }`}>
+                    <Circle className={`h-2 w-2 mr-1 ${
+                      documents.length > 0 && totalWords > 0 
+                        ? 'fill-green-500 text-green-500' 
+                        : 'fill-red-500 text-red-500'
+                    }`} /> 
+                    {documents.length > 0 && totalWords > 0 ? 'Active' : 'Inactive'}
+                  </Badge>
+                )}
               </div>
             </div>
             <CardDescription className="font-inter">
