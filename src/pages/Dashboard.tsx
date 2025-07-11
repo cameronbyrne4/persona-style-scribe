@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import UploadModal from "@/components/UploadModal";
 import { analytics } from "@/lib/analytics";
+import { animate, stagger, inView } from "motion";
 
 interface DashboardProps {
   hasDocuments: boolean;
@@ -19,36 +20,38 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
   const [user, setUser] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const navigate = useNavigate();
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   // Load user and documents on component mount
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        // Get current user
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
-          
-          // Load user's documents
-          const { data: docs, error } = await supabase
-            .from('documents')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .order('uploaded_at', { ascending: false });
-          
-          if (error) {
-            console.error('Error loading documents:', error);
-          } else {
-            setDocuments(docs || []);
-          }
+  const loadUserData = async () => {
+    try {
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        
+        // Load user's documents
+        const { data: docs, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('uploaded_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error loading documents:', error);
+        } else {
+          setDocuments(docs || []);
         }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadUserData();
   }, []);
 
@@ -87,11 +90,45 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
 
   const handleUploadSuccess = () => {
     // Refresh the documents list
-    window.location.reload();
+    loadUserData();
+    // Dispatch custom event to notify Navigation component
+    window.dispatchEvent(new CustomEvent('documents-changed'));
   };
 
+  // Add animations on component mount
+  useEffect(() => {
+    // Page entrance animation
+    animate(
+      ".dashboard-content",
+      { opacity: [0, 1], y: [30, 0] },
+      { duration: 0.8, ease: "easeOut" }
+    );
+
+    // Features grid animation
+    if (featuresRef.current) {
+      inView(featuresRef.current, () => {
+        animate(
+          featuresRef.current.querySelectorAll('.feature-card'),
+          { opacity: [0, 1], y: [40, 0] },
+          { delay: stagger(0.15), duration: 0.6, ease: "easeOut" }
+        );
+      });
+    }
+
+    // Profile card animation
+    if (profileRef.current) {
+      inView(profileRef.current, () => {
+        animate(
+          profileRef.current.querySelectorAll('.profile-stat'),
+          { opacity: [0, 1], scale: [0.8, 1] },
+          { delay: stagger(0.1), duration: 0.5, ease: "easeOut" }
+        );
+      });
+    }
+  }, []);
+
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
+    <div className="container mx-auto px-4 py-6 max-w-6xl dashboard-content">
       <div className="space-y-8">
         {/* Welcome Section */}
         <div className="text-center">
@@ -104,7 +141,7 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
         </div>
 
         {/* Style Profile Overview */}
-        <Card className="shadow-soft border-0">
+        <Card ref={profileRef} className="shadow-soft border-0">
           <CardHeader>
             <CardTitle className="font-playfair font-medium">Your Style Profile</CardTitle>
             <CardDescription className="font-inter">
@@ -118,15 +155,15 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
               </div>
             ) : (
               <div className="grid md:grid-cols-3 gap-6">
-                <div className="text-center">
+                <div className="text-center profile-stat">
                   <div className="text-2xl font-bold text-foreground mb-2">{documents.length}</div>
                   <div className="text-sm text-muted-foreground font-inter">Writing Samples</div>
                 </div>
-                <div className="text-center">
+                <div className="text-center profile-stat">
                   <div className="text-2xl font-bold text-foreground mb-2">{totalWords.toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground font-inter">Total Words</div>
                 </div>
-                <div className="text-center">
+                <div className="text-center profile-stat">
                   <div className="text-2xl font-bold mb-2">
                     <span className={`${
                       styleStrength === 'Excellent' ? 'text-green-600' :
@@ -148,13 +185,13 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
           <h2 className="text-2xl font-playfair font-medium text-foreground mb-6 text-center">
             What would you like to do today?
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div ref={featuresRef} className="grid md:grid-cols-3 gap-6">
             {features.map((feature) => {
               const IconComponent = feature.icon;
               return (
                 <Card 
                   key={feature.path}
-                  className="shadow-soft border-0 hover:shadow-lg transition-shadow cursor-pointer"
+                  className="shadow-soft border-0 hover:shadow-lg transition-all duration-300 cursor-pointer feature-card hover:scale-[1.02] hover:-translate-y-1"
                   onClick={() => {
                     analytics.trackFeature('dashboard_feature_clicked', { 
                       feature: feature.title.toLowerCase().replace(/\s+/g, '_'),
@@ -234,6 +271,21 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
           isOpen={showUploadModal}
           onClose={() => setShowUploadModal(false)}
           onSuccess={handleUploadSuccess}
+          documents={documents}
+          totalWords={totalWords}
+          refreshDocuments={async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              const { data: docs, error } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .order('uploaded_at', { ascending: false });
+              if (!error) {
+                setDocuments(docs || []);
+              }
+            }
+          }}
         />
       </div>
     </div>

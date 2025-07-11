@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { animate } from "motion"
 
 import { cn } from "@/lib/utils"
 
@@ -44,11 +45,28 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      // Add button press animation
+      const target = e.currentTarget;
+      animate(
+        target,
+        { scale: [1, 0.95, 1] },
+        { duration: 0.2, ease: "easeOut" }
+      );
+      
+      // Call original onClick if it exists
+      if (props.onClick) {
+        props.onClick(e);
+      }
+    };
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
+        onClick={handleClick}
       />
     )
   }

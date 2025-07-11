@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, FileText, CheckCircle, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+import { animate, stagger } from "motion";
 
 const Onboarding = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -15,6 +16,7 @@ const Onboarding = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [wordCount, setWordCount] = useState(0);
+  const successRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -237,12 +239,23 @@ const Onboarding = () => {
     setIsProcessing(false);
   };
 
+  // Success celebration animation
+  useEffect(() => {
+    if (isComplete && successRef.current) {
+      animate(
+        successRef.current,
+        { scale: [0, 1.1, 1], rotate: [0, 10, -10, 0] },
+        { duration: 0.8, ease: "easeOut", type: "spring", stiffness: 200 }
+      );
+    }
+  }, [isComplete]);
+
   if (loading) return <div>Loading...</div>;
 
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center shadow-elegant border-0">
+        <Card ref={successRef} className="w-full max-w-md text-center shadow-elegant border-0">
           <CardContent className="p-8">
             <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-8 w-8 text-success" />

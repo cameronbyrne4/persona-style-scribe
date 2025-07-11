@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Copy, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+import { animate, stagger } from "motion";
 
 const StyleTransfer = () => {
   const [inputText, setInputText] = useState(() => {
@@ -15,6 +16,7 @@ const StyleTransfer = () => {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
+  const outputRef = useRef<HTMLDivElement>(null);
 
   // Persist inputText and outputText to localStorage
   useEffect(() => {
@@ -67,6 +69,17 @@ const StyleTransfer = () => {
       
       const result = await response.json();
       setOutputText(result.generatedText);
+      
+      // Animate the output appearance
+      setTimeout(() => {
+        if (outputRef.current) {
+          animate(
+            outputRef.current,
+            { opacity: [0, 1], y: [20, 0] },
+            { duration: 0.6, ease: "easeOut" }
+          );
+        }
+      }, 100);
       
       toast({
         title: "Style transfer complete",
@@ -137,7 +150,7 @@ const StyleTransfer = () => {
         </Card>
 
         {outputText && (
-          <Card className="shadow-soft border-0">
+          <Card ref={outputRef} className="shadow-soft border-0">
             <CardHeader>
               <CardTitle className="font-playfair font-medium flex items-center justify-between">
                 Generated Output

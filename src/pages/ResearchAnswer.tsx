@@ -233,11 +233,10 @@ const ResearchAnswer = () => {
 
   const handleSourceTextChange = (text: string) => {
     setSourceText(text);
-    if (text.trim()) {
-      setCurrentSourceName("Pasted Text");
-      setSourceFile(null); // Clear file input when text is entered
-    } else {
+    // Don't automatically set source name - let user control when to submit
+    if (text.trim().length === 0) {
       setCurrentSourceName("");
+      setSourceFile(null);
     }
   };
 
@@ -305,8 +304,17 @@ const ResearchAnswer = () => {
                     placeholder="Paste your source text here..."
                     value={sourceText}
                     onChange={(e) => handleSourceTextChange(e.target.value)}
-                    className="min-h-32 font-inter"
+                    className="min-h-32 font-inter mb-3"
                   />
+                  {sourceText.trim() && !currentSourceName && (
+                    <Button 
+                      variant="academic" 
+                      onClick={() => setCurrentSourceName("Pasted Text")}
+                      className="font-inter"
+                    >
+                      Set as Source
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -401,12 +409,10 @@ const ResearchAnswer = () => {
                 )}
               </div>
               {/* End Answer Length Dropdown */}
-              {ragMessages.length > 0 && (
-                <Button variant="outline" size="sm" onClick={clearRAGConversation}>
-                  <X className="h-4 w-4 mr-2" />
-                  New Chat
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={clearRAGConversation}>
+                <X className="h-4 w-4 mr-2" />
+                New Chat
+              </Button>
             </div>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import UploadModal from "@/components/UploadModal";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { animate, stagger, inView } from "motion";
 
 interface MyDocumentsProps {
   hasCompletedOnboarding: boolean;
@@ -19,6 +20,7 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const { toast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const documentsRef = useRef<HTMLDivElement>(null);
 
   // Extracted fetchDocuments for reuse
   const fetchDocuments = async () => {
@@ -54,6 +56,19 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
     fetchDocuments();
   }, [toast]);
 
+  // Document list animations
+  useEffect(() => {
+    if (documentsRef.current && documents.length > 0) {
+      inView(documentsRef.current, () => {
+        animate(
+          documentsRef.current.querySelectorAll('.document-item'),
+          { opacity: [0, 1], y: [20, 0] },
+          { delay: stagger(0.1), duration: 0.5, ease: "easeOut" }
+        );
+      });
+    }
+  }, [documents]);
+
   // Calculate style profile stats
   const totalWords = documents.reduce((sum, doc) => {
     return sum + (doc.extracted_text?.split(/\s+/).length || 0);
@@ -81,6 +96,8 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
       });
     } else {
       setDocuments(documents.filter(d => d.id !== docId));
+      // Dispatch custom event to notify Navigation component
+      window.dispatchEvent(new CustomEvent('documents-changed'));
       toast({
         title: "Document deleted",
         description: "Document removed from your style profile",
@@ -91,6 +108,8 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
 
   const handleUploadSuccess = () => {
     fetchDocuments(); // Just refresh the list, do not reload or redirect
+    // Dispatch custom event to notify Navigation component
+    window.dispatchEvent(new CustomEvent('documents-changed'));
   };
 
   return (
@@ -102,8 +121,17 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CardTitle className="font-playfair font-medium">Your Style Profile</CardTitle>
-                <Badge variant="outline" className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 border-green-200">
-                  <Circle className="h-2 w-2 fill-green-500 text-green-500 mr-1" /> Active
+                <Badge variant="outline" className={`flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${
+                  documents.length > 0 && totalWords > 0 
+                    ? 'bg-green-100 text-green-700 border-green-200' 
+                    : 'bg-red-100 text-red-700 border-red-200'
+                }`}>
+                  <Circle className={`h-2 w-2 mr-1 ${
+                    documents.length > 0 && totalWords > 0 
+                      ? 'fill-green-500 text-green-500' 
+                      : 'fill-red-500 text-red-500'
+                  }`} /> 
+                  {documents.length > 0 && totalWords > 0 ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
             </div>
@@ -207,9 +235,9 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div ref={documentsRef} className="space-y-4">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="border border-border rounded-lg p-4">
+                  <div key={doc.id} className="border border-border rounded-lg p-4 document-item">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <FileText className="h-4 w-4 text-primary" />

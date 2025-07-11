@@ -3,9 +3,57 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Upload, RefreshCw, MessageSquare, ArrowRight } from "lucide-react";
 import heroImage from "@/assets/hero-academic.jpg";
 import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useRef } from "react";
+import { animate, stagger, inView, scroll } from "motion";
 
 // Accept user as a prop
 const Landing = ({ user }) => {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const benefitsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Hero section entrance animation
+    if (heroRef.current) {
+      animate(
+        heroRef.current.querySelectorAll('h1, p, button'),
+        { opacity: [0, 1], y: [30, 0] },
+        { delay: stagger(0.2), duration: 0.8, ease: "easeOut" }
+      );
+    }
+
+    // How it works cards animation
+    if (cardsRef.current) {
+      inView(cardsRef.current, () => {
+        animate(
+          cardsRef.current.querySelectorAll('.card-animate'),
+          { opacity: [0, 1], y: [40, 0] },
+          { delay: stagger(0.15), duration: 0.6, ease: "easeOut" }
+        );
+      });
+    }
+
+    // Benefits section animation
+    if (benefitsRef.current) {
+      inView(benefitsRef.current, () => {
+        animate(
+          benefitsRef.current.querySelectorAll('.benefit-item'),
+          { opacity: [0, 1], x: [-20, 0] },
+          { delay: stagger(0.1), duration: 0.5, ease: "easeOut" }
+        );
+      });
+    }
+
+    // Parallax effect on hero image
+    const heroImage = document.querySelector('.hero-image');
+    if (heroImage) {
+      scroll(
+        animate(heroImage, { y: [0, "20%"] }),
+        { target: heroImage }
+      );
+    }
+  }, []);
+
   const handleGetStarted = () => {
     window.location.href = "/onboarding";
   };
@@ -42,7 +90,7 @@ const Landing = ({ user }) => {
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20">
-        <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+        <div ref={heroRef} className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
           <div className="text-center lg:text-left">
             <h1 className="text-5xl md:text-6xl font-playfair font-medium text-foreground mb-6 leading-tight">
               Essays in <span className="text-primary">Your Voice</span>
@@ -66,7 +114,7 @@ const Landing = ({ user }) => {
           </div>
           
           <div className="relative">
-            <div className="relative overflow-hidden rounded-2xl shadow-elegant">
+            <div className="relative overflow-hidden rounded-2xl shadow-elegant hero-image">
               <img 
                 src={heroImage} 
                 alt="Academic writing workspace with books and fountain pen" 
@@ -89,8 +137,8 @@ const Landing = ({ user }) => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <Card className="text-center shadow-soft border-0">
+        <div ref={cardsRef} className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <Card className="text-center shadow-soft border-0 card-animate hover:shadow-lg transition-all duration-300 cursor-pointer">
             <CardContent className="p-8">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Upload className="h-6 w-6 text-primary" />
@@ -104,7 +152,7 @@ const Landing = ({ user }) => {
             </CardContent>
           </Card>
 
-          <Card className="text-center shadow-soft border-0">
+          <Card className="text-center shadow-soft border-0 card-animate hover:shadow-lg transition-all duration-300 cursor-pointer">
             <CardContent className="p-8">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <RefreshCw className="h-6 w-6 text-primary" />
@@ -118,7 +166,7 @@ const Landing = ({ user }) => {
             </CardContent>
           </Card>
 
-          <Card className="text-center shadow-soft border-0">
+          <Card className="text-center shadow-soft border-0 card-animate hover:shadow-lg transition-all duration-300 cursor-pointer">
             <CardContent className="p-8">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <MessageSquare className="h-6 w-6 text-primary" />
@@ -137,13 +185,13 @@ const Landing = ({ user }) => {
       {/* Benefits */}
       <section className="bg-card/50 py-16">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto">
+          <div ref={benefitsRef} className="max-w-3xl mx-auto">
             <h2 className="text-3xl font-playfair font-medium text-center text-foreground mb-12">
               Why Choose Pensona?
             </h2>
             
             <div className="space-y-6">
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start space-x-4 benefit-item">
                 <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-lg font-inter font-medium text-foreground mb-1">
@@ -155,7 +203,7 @@ const Landing = ({ user }) => {
                 </div>
               </div>
 
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start space-x-4 benefit-item">
                 <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-lg font-inter font-medium text-foreground mb-1">
@@ -167,7 +215,7 @@ const Landing = ({ user }) => {
                 </div>
               </div>
 
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start space-x-4 benefit-item">
                 <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-lg font-inter font-medium text-foreground mb-1">
@@ -179,7 +227,7 @@ const Landing = ({ user }) => {
                 </div>
               </div>
 
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start space-x-4 benefit-item">
                 <CheckCircle className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-lg font-inter font-medium text-foreground mb-1">

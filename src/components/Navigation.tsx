@@ -1,28 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { User, LogOut, Circle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { animate, stagger } from "motion";
 
 const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<any>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [documents, setDocuments] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchDocuments(session.user.id);
+      }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchDocuments(session.user.id);
+      } else {
+        setDocuments([]);
+      }
     });
     return () => {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  // Listen for document changes from other components
+  useEffect(() => {
+    const handleDocumentChange = () => {
+      if (user) {
+        fetchDocuments(user.id);
+      }
+    };
+
+    // Listen for custom events when documents are added/deleted
+    window.addEventListener('documents-changed', handleDocumentChange);
+    
+    return () => {
+      window.removeEventListener('documents-changed', handleDocumentChange);
+    };
+  }, [user]);
+
+  const fetchDocuments = async (userId: string) => {
+    try {
+      const { data: docs, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('user_id', userId)
+        .order('uploaded_at', { ascending: false });
+      if (!error) {
+        setDocuments(docs || []);
+      }
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -36,6 +77,20 @@ const Navigation = () => {
   const avatarUrl = user?.user_metadata?.avatar_url;
   const name = user?.user_metadata?.full_name || user?.user_metadata?.name || "User";
   const email = user?.email;
+
+  // Calculate total words from documents
+  const totalWords = documents.reduce((sum, doc) => {
+    return sum + (doc.extracted_text?.split(/\s+/).length || 0);
+  }, 0);
+
+  // Navigation entrance animation
+  useEffect(() => {
+    animate(
+      ".nav-item",
+      { opacity: [0, 1], x: [-20, 0] },
+      { delay: stagger(0.1), duration: 0.5, ease: "easeOut" }
+    );
+  }, []);
 
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm flex-shrink-0">
@@ -56,7 +111,7 @@ const Navigation = () => {
                 variant={isActive("/style-transfer") ? "academic" : "ghost"} 
                 size="sm"
                 onClick={() => navigate("/style-transfer")}
-                className="font-inter"
+                className="font-inter nav-item"
               >
                 Style Transfer
               </Button>
@@ -64,7 +119,7 @@ const Navigation = () => {
                 variant={isActive("/research-answer") ? "academic" : "ghost"} 
                 size="sm"
                 onClick={() => navigate("/research-answer")}
-                className="font-inter"
+                className="font-inter nav-item"
               >
                 Research & Answer
               </Button>
@@ -72,7 +127,7 @@ const Navigation = () => {
                 variant={isActive("/my-documents") ? "academic" : "ghost"} 
                 size="sm"
                 onClick={() => navigate("/my-documents")}
-                className="font-inter"
+                className="font-inter nav-item"
               >
                 My Documents
               </Button>
@@ -80,7 +135,7 @@ const Navigation = () => {
                 variant={isActive("/history") ? "academic" : "ghost"} 
                 size="sm"
                 onClick={() => navigate("/history")}
-                className="font-inter"
+                className="font-inter nav-item"
               >
                 History
               </Button>
@@ -89,8 +144,17 @@ const Navigation = () => {
           {/* User Section */}
           <div className="flex items-center space-x-4">
             <span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 border border-green-200 rounded-full">
-                <Circle className="h-2 w-2 fill-green-500 text-green-500 mr-1" /> Active
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded-full ${
+                documents.length > 0 && totalWords > 0 
+                  ? 'bg-green-100 text-green-700 border-green-200' 
+                  : 'bg-red-100 text-red-700 border-red-200'
+              }`}>
+                <Circle className={`h-2 w-2 mr-1 ${
+                  documents.length > 0 && totalWords > 0 
+                    ? 'fill-green-500 text-green-500' 
+                    : 'fill-red-500 text-red-500'
+                }`} /> 
+                {documents.length > 0 && totalWords > 0 ? 'Active' : 'Inactive'}
               </span>
             </span>
             {user && (

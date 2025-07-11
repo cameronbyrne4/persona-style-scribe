@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, FileText, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+import { animate } from "motion";
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ const UploadModal = ({ isOpen, onClose, onSuccess, documents, totalWords, refres
   const { toast } = useToast();
   const [user, setUser] = useState(null);
   const [wordCount, setWordCount] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
   // REMOVE: const [existingWordCount, setExistingWordCount] = useState(0);
   // REMOVE: const [existingFileCount, setExistingFileCount] = useState(0);
 
@@ -32,6 +34,17 @@ const UploadModal = ({ isOpen, onClose, onSuccess, documents, totalWords, refres
     };
     getUser();
   }, []);
+
+  // Modal entrance animation
+  useEffect(() => {
+    if (isOpen && modalRef.current) {
+      animate(
+        modalRef.current,
+        { opacity: [0, 1] },
+        { duration: 0.3, ease: "easeOut" }
+      );
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const updateWordCount = async () => {
@@ -314,7 +327,7 @@ const UploadModal = ({ isOpen, onClose, onSuccess, documents, totalWords, refres
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-elegant border-0">
+      <Card ref={modalRef} className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-elegant border-0 opacity-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
             <CardTitle className="font-playfair font-medium mb-2">Add Writing Samples</CardTitle>
