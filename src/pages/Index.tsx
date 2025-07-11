@@ -13,7 +13,7 @@ const Index = () => {
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
-              <h1 className="text-xl font-playfair font-medium text-foreground">PersonaPen</h1>
+              <h1 className="text-xl font-playfair font-medium text-foreground">Pensona</h1>
             </Link>
             <Badge variant="secondary" className="font-inter">Demo Mode</Badge>
           </div>
@@ -30,10 +30,10 @@ const Index = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto text-center mb-12">
           <h1 className="text-4xl font-playfair font-medium text-foreground mb-4">
-            PersonaPen Demo
+            Pensona Demo
           </h1>
           <p className="text-xl text-muted-foreground font-inter mb-8">
-            Explore the features that make PersonaPen perfect for academic writing
+            Explore the features that make Pensona perfect for academic writing
           </p>
         </div>
 

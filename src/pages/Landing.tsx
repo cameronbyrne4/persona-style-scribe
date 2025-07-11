@@ -25,7 +25,7 @@ const Landing = ({ user }) => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
-            <h1 className="text-xl font-playfair font-medium text-foreground">PersonaPen</h1>
+            <h1 className="text-xl font-playfair font-medium text-foreground">Pensona</h1>
           </div>
           {/* Conditionally render button based on user */}
           {user ? (
@@ -82,7 +82,7 @@ const Landing = ({ user }) => {
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
-            How PersonaPen Works
+            How Pensona Works
           </h2>
           <p className="text-lg text-muted-foreground font-inter max-w-2xl mx-auto">
             Three simple steps to transform your writing workflow
@@ -139,7 +139,7 @@ const Landing = ({ user }) => {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl font-playfair font-medium text-center text-foreground mb-12">
-              Why Choose PersonaPen?
+              Why Choose Pensona?
             </h2>
             
             <div className="space-y-6">
@@ -221,10 +221,10 @@ const Landing = ({ user }) => {
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <div className="w-6 h-6 bg-gradient-primary rounded"></div>
-            <span className="font-playfair font-medium text-foreground">PersonaPen</span>
+            <span className="font-playfair font-medium text-foreground">Pensona</span>
           </div>
           <p className="text-sm text-muted-foreground font-inter">
-            © 2024 PersonaPen. Academic writing in your authentic voice.
+            © 2024 Pensona. Academic writing in your authentic voice.
           </p>
         </div>
       </footer>

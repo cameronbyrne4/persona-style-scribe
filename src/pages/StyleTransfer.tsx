@@ -8,23 +8,23 @@ import { supabase } from "@/lib/supabaseClient";
 
 const StyleTransfer = () => {
   const [inputText, setInputText] = useState(() => {
-    return localStorage.getItem('personapen_style_input') || "";
+    return localStorage.getItem('Pensona_style_input') || "";
   });
   const [outputText, setOutputText] = useState(() => {
-    return localStorage.getItem('personapen_style_output') || "";
+    return localStorage.getItem('Pensona_style_output') || "";
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   // Persist inputText and outputText to localStorage
   useEffect(() => {
-    localStorage.setItem('personapen_style_input', inputText);
+    localStorage.setItem('Pensona_style_input', inputText);
   }, [inputText]);
   useEffect(() => {
     if (outputText) {
-      localStorage.setItem('personapen_style_output', outputText);
+      localStorage.setItem('Pensona_style_output', outputText);
     } else {
-      localStorage.removeItem('personapen_style_output');
+      localStorage.removeItem('Pensona_style_output');
     }
   }, [outputText]);
 
@@ -97,8 +97,8 @@ const StyleTransfer = () => {
   const clearStyleTransfer = () => {
     setInputText("");
     setOutputText("");
-    localStorage.removeItem('personapen_style_input');
-    localStorage.removeItem('personapen_style_output');
+    localStorage.removeItem('Pensona_style_input');
+    localStorage.removeItem('Pensona_style_output');
   };
 
   return (

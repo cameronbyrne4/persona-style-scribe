@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const PERSISTENT_ROUTE_KEY = 'personapen_current_route';
+const PERSISTENT_ROUTE_KEY = 'Pensona_current_route';
 
 export const usePersistentRoute = () => {
   const location = useLocation();

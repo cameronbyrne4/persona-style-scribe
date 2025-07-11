@@ -25,7 +25,7 @@ const ResearchAnswer = () => {
   const [showSourceText, setShowSourceText] = useState(false);
   const [answerLength, setAnswerLength] = useState<'short' | 'medium' | 'long'>(() => {
     // Try to load from localStorage, default to 'medium'
-    const saved = localStorage.getItem('personapen_research_answer_length');
+    const saved = localStorage.getItem('Pensona_research_answer_length');
     if (saved === 'short' || saved === 'medium' || saved === 'long') return saved;
     return 'medium';
   });
@@ -36,9 +36,9 @@ const ResearchAnswer = () => {
 
   // Load chat state from localStorage on mount
   useEffect(() => {
-    const savedChat = localStorage.getItem('personapen_research_chat');
-    const savedSource = localStorage.getItem('personapen_research_source');
-    const savedSourceName = localStorage.getItem('personapen_research_source_name');
+    const savedChat = localStorage.getItem('Pensona_research_chat');
+    const savedSource = localStorage.getItem('Pensona_research_source');
+    const savedSourceName = localStorage.getItem('Pensona_research_source_name');
     
     if (savedChat) {
       try {
@@ -64,28 +64,28 @@ const ResearchAnswer = () => {
   // Save chat state to localStorage whenever it changes
   useEffect(() => {
     if (ragMessages.length > 0) {
-      localStorage.setItem('personapen_research_chat', JSON.stringify(ragMessages));
+      localStorage.setItem('Pensona_research_chat', JSON.stringify(ragMessages));
     }
   }, [ragMessages]);
 
   // Save source text to localStorage
   useEffect(() => {
     if (sourceText) {
-      localStorage.setItem('personapen_research_source', sourceText);
+      localStorage.setItem('Pensona_research_source', sourceText);
     }
   }, [sourceText]);
 
   // Save source name to localStorage
   useEffect(() => {
     if (currentSourceName) {
-      localStorage.setItem('personapen_research_source_name', currentSourceName);
+      localStorage.setItem('Pensona_research_source_name', currentSourceName);
     }
   }, [currentSourceName]);
 
   // Save answer length to localStorage
   useEffect(() => {
     if (answerLength) {
-      localStorage.setItem('personapen_research_answer_length', answerLength);
+      localStorage.setItem('Pensona_research_answer_length', answerLength);
     }
   }, [answerLength]);
 
@@ -182,9 +182,9 @@ const ResearchAnswer = () => {
     setCurrentSourceName("");
     setSourceFile(null);
     // Clear localStorage
-    localStorage.removeItem('personapen_research_chat');
-    localStorage.removeItem('personapen_research_source');
-    localStorage.removeItem('personapen_research_source_name');
+    localStorage.removeItem('Pensona_research_chat');
+    localStorage.removeItem('Pensona_research_source');
+    localStorage.removeItem('Pensona_research_source_name');
   };
 
   const scrollToBottom = () => {
@@ -475,7 +475,7 @@ const ResearchAnswer = () => {
                             }`}
                           >
                             <div className="text-sm font-medium mb-2">
-                              {message.type === 'question' ? 'You' : 'PersonaPen'}
+                              {message.type === 'question' ? 'You' : 'Pensona'}
                             </div>
                             <div className="text-sm leading-relaxed">{message.content}</div>
                             <div className="flex items-center justify-between mt-3">
@@ -500,7 +500,7 @@ const ResearchAnswer = () => {
                       {isGenerating && (
                         <div className="flex justify-start">
                           <div className="bg-muted/30 p-4 rounded-lg font-inter max-w-[80%]">
-                            <div className="text-sm font-medium mb-2">PersonaPen</div>
+                            <div className="text-sm font-medium mb-2">Pensona</div>
                             <div className="text-sm text-muted-foreground">
                               Researching your question...
                             </div>

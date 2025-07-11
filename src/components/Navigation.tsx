@@ -47,8 +47,8 @@ const Navigation = () => {
               className="flex items-center space-x-2 cursor-pointer"
               onClick={() => navigate("/")}
             >
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
-              <h1 className="text-xl font-playfair font-medium text-foreground">PersonaPen</h1>
+              <img src="/Pensona.png" alt="Pensona logo" className="w-8 h-8 rounded-lg object-cover" />
+              <h1 className="text-xl font-playfair font-medium text-foreground">Pensona</h1>
             </div>
             {/* Navigation Links */}
             <nav className="flex items-center space-x-1">

@@ -96,7 +96,7 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
         {/* Welcome Section */}
         <div className="text-center">
           <h1 className="text-4xl font-playfair font-medium text-foreground mb-4">
-            Welcome to PersonaPen
+            Welcome to Pensona
           </h1>
           <p className="text-lg text-muted-foreground font-inter max-w-2xl mx-auto">
             Your AI-powered writing assistant that learns your unique style and helps you create content that sounds authentically you.
@@ -213,7 +213,7 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
             <CardHeader>
               <CardTitle className="font-playfair font-medium">Get Started</CardTitle>
               <CardDescription className="font-inter">
-                Upload your first writing sample to start using PersonaPen
+                Upload your first writing sample to start using Pensona
               </CardDescription>
             </CardHeader>
             <CardContent>
