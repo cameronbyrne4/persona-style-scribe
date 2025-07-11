@@ -12,7 +12,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
+              <img src="/Pensona.png" alt="Pensona logo" className="w-8 h-8 rounded-lg object-cover" />
               <h1 className="text-xl font-playfair font-medium text-foreground">Pensona</h1>
             </Link>
             <Badge variant="secondary" className="font-inter">Demo Mode</Badge>
@@ -103,7 +103,7 @@ const Index = () => {
           <CardContent>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
               <div>
-                <div className="w-16 h-16 bg-gradient-primary rounded-lg mx-auto mb-3"></div>
+                <img src="/Pensona.png" alt="Pensona brand icon" className="w-16 h-16 rounded-lg mx-auto mb-3 object-cover" />
                 <p className="font-inter text-sm text-muted-foreground">Academic Green<br/>Brand Colors</p>
               </div>
               <div>

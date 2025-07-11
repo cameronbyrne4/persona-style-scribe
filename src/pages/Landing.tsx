@@ -24,7 +24,7 @@ const Landing = ({ user }) => {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg"></div>
+            <img src="/Pensona.png" alt="Pensona logo" className="w-8 h-8 rounded-lg object-cover" />
             <h1 className="text-xl font-playfair font-medium text-foreground">Pensona</h1>
           </div>
           {/* Conditionally render button based on user */}
@@ -220,11 +220,11 @@ const Landing = ({ user }) => {
       <footer className="border-t border-border bg-card/30 py-8">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-6 h-6 bg-gradient-primary rounded"></div>
+            <img src="/Pensona.png" alt="Pensona logo" className="w-6 h-6 rounded object-cover" />
             <span className="font-playfair font-medium text-foreground">Pensona</span>
           </div>
           <p className="text-sm text-muted-foreground font-inter">
-            © 2024 Pensona. Academic writing in your authentic voice.
+            © 2025 Pensona. Academic writing in your authentic voice.
           </p>
         </div>
       </footer>
