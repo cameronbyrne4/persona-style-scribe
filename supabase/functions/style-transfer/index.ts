@@ -1,6 +1,7 @@
 // supabase/functions/style-transfer/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateInputText, validateApiKey } from "../shared/validation.ts";
 
 console.log("Style transfer function loaded");
 
@@ -72,8 +73,10 @@ serve(async (req) => {
     // Parse request body
     const { inputText } = await req.json();
     
-    if (!inputText || !inputText.trim()) {
-      return new Response(JSON.stringify({ error: "Input text is required" }), {
+    // Validate input text
+    const inputValidation = validateInputText(inputText);
+    if (!inputValidation.isValid) {
+      return new Response(JSON.stringify({ error: inputValidation.error }), {
         status: 400,
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -208,23 +211,23 @@ IMPORTANT: The text to rewrite is ${inputText.split(' ').length} words long. You
     console.log("Writing samples length:", writingSamples.length);
     console.log("Input text length:", inputText.length);
     
-    // Comprehensive API key debugging
+    // Validate API key
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    console.log("=== API Key Debug Info ===");
-    console.log("Key present:", !!anthropicKey);
-    console.log("Key length:", anthropicKey?.length);
-    console.log("Starts with sk-ant-:", anthropicKey?.startsWith('sk-ant-'));
-    console.log("Key preview:", anthropicKey?.substring(0, 15) + "..." + anthropicKey?.substring(anthropicKey.length - 5));
-    console.log("Has whitespace:", /\s/.test(anthropicKey || ''));
-    console.log("Has newlines:", /\n/.test(anthropicKey || ''));
+    const apiKeyValidation = validateApiKey(anthropicKey || '');
+    if (!apiKeyValidation.isValid) {
+      console.log("API key validation failed:", apiKeyValidation.error);
+      return new Response(JSON.stringify({ error: "API configuration error" }), {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        },
+      });
+    }
 
     // Clean the key
     const cleanKey = anthropicKey?.trim().replace(/[\r\n]/g, '');
-    console.log("Cleaned key length:", cleanKey?.length);
-    console.log("Cleaned key starts with sk-ant-:", cleanKey?.startsWith('sk-ant-'));
-    console.log("========================");
-    
-    console.log("API key verified, proceeding with style transfer...");
+    console.log("API key validated, proceeding with style transfer...");
     
     // Call Anthropic Claude API
     const headers = new Headers({

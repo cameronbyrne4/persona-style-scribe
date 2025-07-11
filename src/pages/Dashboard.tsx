@@ -71,7 +71,7 @@ const Dashboard = ({ hasDocuments, hasCompletedOnboarding }: DashboardProps) => 
     },
     {
       title: "Research & Answer",
-      description: "Ask questions about your documents and get AI-powered answers",
+      description: "Ask questions about your documents and get AI-powered answers that sound like you",
       icon: Search,
       path: "/research-answer",
       color: "bg-green-500/10 text-green-600"
