@@ -10,15 +10,20 @@ interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  documents: any[];
+  totalWords: number;
+  refreshDocuments: () => Promise<void>;
 }
 
-const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
+const UploadModal = ({ isOpen, onClose, onSuccess, documents, totalWords, refreshDocuments }: UploadModalProps) => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [pastedText, setPastedText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const [user, setUser] = useState(null);
   const [wordCount, setWordCount] = useState(0);
+  // REMOVE: const [existingWordCount, setExistingWordCount] = useState(0);
+  // REMOVE: const [existingFileCount, setExistingFileCount] = useState(0);
 
   useEffect(() => {
     const getUser = async () => {
@@ -41,34 +46,117 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
     updateWordCount();
   }, [uploadedFiles, pastedText]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setUploadedFiles(prev => [...prev, ...files]);
-    toast({
-      title: "Files uploaded",
-      description: `${files.length} file(s) added to your style profile`,
-    });
-  };
+  // Extract fetch logic for reuse
+  // REMOVE: const refreshExistingCounts = async (userId: string) => { ... };
+  // REMOVE: useEffect(() => { ... refreshExistingCounts(user.id) ... }, [user]);
+
+  const MAX_WORDS = 5000;
+  const MAX_FILES = 10;
 
   const countWords = (text: string): number => {
     if (!text) return 0;
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
-  const getTotalWordCount = async (): Promise<number> => {
-    let total: number = 0;
+  // Helper function to calculate current total word count synchronously
+  const getCurrentWordCount = async (): Promise<number> => {
+    let total = 0;
     if (pastedText && pastedText.trim()) {
-      total += Number(countWords(pastedText));
+      total += countWords(pastedText);
     }
     for (const file of uploadedFiles) {
       const text = await file.text();
-      total += Number(countWords(text));
+      total += countWords(text);
     }
     return total;
   };
 
+  // In handleFileUpload, use documents.length and totalWords for limits
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    
+    // Clear the input to allow re-selecting the same files
+    event.target.value = '';
+    
+    // Check file count limit INCLUDING existing files
+    if (documents.length + uploadedFiles.length >= MAX_FILES) {
+      toast({
+        title: `File limit reached`,
+        description: `You can only have ${MAX_FILES} documents total. Current: ${documents.length + uploadedFiles.length}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Only allow files up to the max
+    const allowedFiles = files.slice(0, MAX_FILES - (documents.length + uploadedFiles.length));
+    
+    // Calculate TOTAL word count including existing
+    const currentSessionWordCount = await getCurrentWordCount();
+    const totalCurrentWords = totalWords + currentSessionWordCount;
+    let projectedWordCount = totalCurrentWords;
+    for (const file of allowedFiles) {
+      try {
+        const text = await file.text();
+        projectedWordCount += countWords(text);
+      } catch (error) {
+        toast({
+          title: "Error reading file",
+          description: `Could not read file: ${file.name}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (projectedWordCount > MAX_WORDS) {
+      toast({
+        title: `Word limit exceeded`,
+        description: `You can only have ${MAX_WORDS} words total. Current: ${totalWords}, Would be: ${projectedWordCount}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadedFiles(prev => [...prev, ...allowedFiles]);
+    toast({
+      title: "Files uploaded",
+      description: `${allowedFiles.length} file(s) added to your style profile`,
+    });
+  };
+
+  const handleTextChange = async (value: string) => {
+    // Calculate what the word count would be with this new text
+    const currentFilesWordCount = await Promise.all(
+      uploadedFiles.map(async (file) => {
+        const text = await file.text();
+        return countWords(text);
+      })
+    ).then(counts => counts.reduce((sum, count) => sum + count, 0));
+    
+    const newTextWordCount = countWords(value);
+    // Include existing words in calculation
+    const projectedTotal = totalWords + currentFilesWordCount + newTextWordCount;
+    
+    if (projectedTotal > MAX_WORDS) {
+      toast({
+        title: `Word limit exceeded`,
+        description: `Total limit is ${MAX_WORDS} words. You currently have ${totalWords} words. This would make ${projectedTotal} total.`,
+        variant: "destructive",
+      });
+      return; // Don't update the text
+    }
+    
+    setPastedText(value);
+  };
+
+  const getTotalWordCount = async (): Promise<number> => {
+    return await getCurrentWordCount();
+  };
+
   const EDGE_FUNCTION_URL = "https://kiusphbzbtkdykmnvgmq.supabase.co/functions/v1/extract-text";
 
+  // In handleSubmit, after successful upload, call refreshDocuments before closing
   const handleSubmit = async () => {
     if (uploadedFiles.length === 0 && !pastedText.trim()) {
       toast({
@@ -80,23 +168,23 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
     }
 
     setIsProcessing(true);
-    const totalWords = Number(await getTotalWordCount());
+    const overallWords = totalWords + wordCount;
     
-    if (totalWords < 600) {
+    if (overallWords < 600) {
       setIsProcessing(false);
       toast({
-        title: `Not enough words (${totalWords})`,
+        title: `Not enough words (${overallWords})`,
         description: "Please provide at least 600 words in total.",
         variant: "destructive",
       });
       return;
     }
 
-    if (totalWords > 5000) {
+    if (overallWords > MAX_WORDS) {
       setIsProcessing(false);
       toast({
-        title: `Too many words (${totalWords})`,
-        description: "Please reduce your input to no more than 5000 words in total.",
+        title: `Too many words (${overallWords})`,
+        description: `Please reduce your input to no more than ${MAX_WORDS} words in total.`,
         variant: "destructive",
       });
       return;
@@ -196,6 +284,9 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
         setUploadedFiles([]);
         setPastedText("");
         
+        // Refetch existing counts before closing
+        // REMOVE: if (user?.id) await refreshExistingCounts(user.id);
+        await refreshDocuments();
         // Close modal and trigger success callback
         onClose();
         if (onSuccess) {
@@ -213,6 +304,13 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
   };
 
   if (!isOpen) return null;
+
+  // In the JSX, use documents.length and totalWords for limits and display
+  const isAtFileLimit = (documents.length + uploadedFiles.length) >= MAX_FILES;
+  const isAtWordLimit = (totalWords + wordCount) >= MAX_WORDS;
+  const currentSessionWords = wordCount;
+  const overallWords = totalWords + currentSessionWords;
+  const overallFiles = documents.length + uploadedFiles.length;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -237,7 +335,11 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
           <div className="grid md:grid-cols-2 gap-4">
             {/* File Upload */}
             <div>
-              <div className="border-2 border-dashed border-border rounded-lg p-5 text-center hover:border-primary/50 transition-colors">
+              <div className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${
+                isAtFileLimit || isAtWordLimit 
+                  ? 'border-gray-300 bg-gray-50' 
+                  : 'border-border hover:border-primary/50'
+              }`}>
                 <input
                   type="file"
                   multiple
@@ -245,11 +347,19 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
                   onChange={handleFileUpload}
                   className="hidden"
                   id="modal-file-upload"
+                  disabled={isAtFileLimit || isAtWordLimit}
                 />
-                <label htmlFor="modal-file-upload" className="cursor-pointer">
-                  <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                  <p className="font-inter text-sm text-muted-foreground">
-                    Upload .txt files
+                <label 
+                  htmlFor="modal-file-upload" 
+                  className={isAtFileLimit || isAtWordLimit ? 'cursor-not-allowed' : 'cursor-pointer'}
+                >
+                  <Upload className={`h-6 w-6 mx-auto mb-2 ${
+                    isAtFileLimit || isAtWordLimit ? 'text-gray-400' : 'text-muted-foreground'
+                  }`} />
+                  <p className={`font-inter text-sm ${
+                    isAtFileLimit || isAtWordLimit ? 'text-gray-400' : 'text-muted-foreground'
+                  }`}>
+                    {isAtFileLimit ? 'File limit reached' : isAtWordLimit ? 'Word limit reached' : 'Upload .txt files'}
                   </p>
                 </label>
               </div>
@@ -274,30 +384,34 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
                   ))}
                 </div>
               )}
+              {(isAtFileLimit || isAtWordLimit) && (
+                <div className="text-xs text-red-600 mt-2 font-inter">
+                  {isAtFileLimit && `Maximum ${MAX_FILES} files allowed.`}
+                  {isAtFileLimit && isAtWordLimit && <br />}
+                  {isAtWordLimit && `Maximum ${MAX_WORDS} words allowed.`}
+                </div>
+              )}
             </div>
 
             {/* Text Paste */}
             <div>
               <Textarea
-                placeholder="Or paste text directly..."
+                placeholder={isAtWordLimit ? "Word limit reached" : "Or paste text directly..."}
                 value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
+                onChange={(e) => handleTextChange(e.target.value)}
                 className="min-h-24 font-inter"
+                disabled={isAtWordLimit && !pastedText}
               />
             </div>
           </div>
 
           {/* Word Count */}
           <div className="flex items-center justify-between text-sm">
-            <span className="font-inter text-muted-foreground">Total Word Count:</span>
-            <span className={`font-inter font-medium ${
-              wordCount >= 600 && wordCount <= 5000 
-                ? 'text-green-600' 
-                : wordCount > 0 
-                  ? 'text-red-600' 
-                  : 'text-muted-foreground'
-            }`}>
-              {wordCount} words
+            <span className="font-inter text-muted-foreground">
+              Total: {overallFiles}/{MAX_FILES} files, {overallWords}/{MAX_WORDS} words
+            </span>
+            <span className="font-inter text-xs text-muted-foreground">
+              (Existing: {documents.length} files, {totalWords} words)
             </span>
           </div>
 
@@ -306,13 +420,15 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button 
-              variant="academic" 
-              onClick={handleSubmit}
-              disabled={isProcessing || wordCount < 600 || wordCount > 5000}
-            >
-              {isProcessing ? "Processing..." : "Add Samples"}
-            </Button>
+            {(overallWords <= MAX_WORDS && overallFiles <= MAX_FILES) && (
+              <Button 
+                variant="academic" 
+                onClick={handleSubmit}
+                disabled={isProcessing || overallWords < 600}
+              >
+                {isProcessing ? "Processing..." : "Add Samples"}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -320,4 +436,4 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
   );
 };
 
-export default UploadModal; 
+export default UploadModal;

@@ -63,6 +63,11 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
                        documents.length >= 2 && totalWords >= 2000 ? "Good" : 
                        documents.length >= 1 && totalWords >= 1000 ? "Fair" : "Poor";
 
+  const MAX_WORDS = 5000;
+  const MAX_FILES = 10;
+  const isAtFileLimit = documents.length >= MAX_FILES;
+  const isAtWordLimit = totalWords >= MAX_WORDS;
+
   const handleDeleteDocument = async (docId: string) => {
     const { error } = await supabase
       .from('documents')
@@ -155,13 +160,16 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
               <Button 
                 variant="academic" 
                 onClick={() => {
-                  if (hasCompletedOnboarding) {
+                  if (hasCompletedOnboarding && !isAtFileLimit && !isAtWordLimit) {
                     setShowUploadModal(true);
-                  } else {
+                  } else if (!hasCompletedOnboarding) {
                     window.location.href = "/onboarding";
                   }
                 }}
                 className="font-inter"
+                disabled={isAtFileLimit || isAtWordLimit}
+                style={{ opacity: (isAtFileLimit || isAtWordLimit) ? 0.5 : 1, cursor: (isAtFileLimit || isAtWordLimit) ? 'not-allowed' : 'pointer' }}
+                title={isAtFileLimit ? `Maximum ${MAX_FILES} documents reached` : isAtWordLimit ? `Maximum ${MAX_WORDS} words reached` : ''}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Sample
@@ -255,6 +263,9 @@ const MyDocuments = ({ hasCompletedOnboarding }: MyDocumentsProps) => {
           isOpen={showUploadModal}
           onClose={() => setShowUploadModal(false)}
           onSuccess={handleUploadSuccess}
+          documents={documents}
+          totalWords={totalWords}
+          refreshDocuments={fetchDocuments}
         />
       </div>
     </div>
