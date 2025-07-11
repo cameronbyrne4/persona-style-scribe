@@ -257,9 +257,19 @@ const UploadModal = ({ isOpen, onClose, onSuccess }: UploadModalProps) => {
               {uploadedFiles.length > 0 && (
                 <div className="mt-3 space-y-1">
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center space-x-2 text-sm">
+                    <div key={index} className="flex items-center space-x-2 text-sm group">
                       <FileText className="h-3 w-3 text-primary" />
                       <span className="font-inter">{file.name}</span>
+                      <button
+                        type="button"
+                        aria-label="Remove file"
+                        className="ml-1 text-muted-foreground hover:text-red-600 opacity-70 group-hover:opacity-100 transition"
+                        onClick={() => {
+                          setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </div>
                   ))}
                 </div>
