@@ -43,15 +43,6 @@ const Landing = ({ user }) => {
         );
       });
     }
-
-    // Parallax effect on hero image
-    const heroImage = document.querySelector('.hero-image');
-    if (heroImage) {
-      scroll(
-        animate(heroImage, { y: [0, "20%"] }),
-        { target: heroImage }
-      );
-    }
   }, []);
 
   const handleGetStarted = () => {
@@ -67,21 +58,21 @@ const Landing = ({ user }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/20 bg-white/10 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <img src="/Pensona.png" alt="Pensona logo" className="w-8 h-8 rounded-lg object-cover" />
-            <h1 className="text-xl font-playfair font-medium text-foreground">Pensona</h1>
+            <h1 className="text-xl font-playfair font-medium text-white">Pensona</h1>
           </div>
           {/* Conditionally render button based on user */}
           {user ? (
-            <Button variant="outline" size="sm" onClick={handleGoToDashboard}>
+            <Button variant="outline" size="sm" onClick={handleGoToDashboard} className="bg-white/20 border-white/30 text-white hover:bg-white/30">
               Go to Dashboard
             </Button>
           ) : (
-            <Button variant="outline" size="sm" onClick={handleSignIn}>
+            <Button variant="outline" size="sm" onClick={handleSignIn} className="bg-white/20 border-white/30 text-white hover:bg-white/30">
               Sign In
             </Button>
           )}
@@ -89,13 +80,24 @@ const Landing = ({ user }) => {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div ref={heroRef} className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
-          <div className="text-center lg:text-left">
-            <h1 className="text-5xl md:text-6xl font-playfair font-medium text-foreground mb-6 leading-tight">
-              Essays in <span className="text-primary">Your Voice</span>
+      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+        {/* Fullscreen Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={heroImage} 
+            alt="Academic writing workspace with books and fountain pen" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/40"></div>
+        </div>
+        
+        {/* Centered Hero Content */}
+        <div ref={heroRef} className="relative z-10 text-center max-w-4xl mx-auto px-4">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 md:p-12 shadow-2xl">
+            <h1 className="text-5xl md:text-7xl font-playfair font-medium text-white mb-6 leading-tight">
+              Essays in <span className="text-green-300">Your Voice</span>
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 font-inter">
+            <p className="text-xl md:text-2xl text-white/90 mb-8 font-inter max-w-3xl mx-auto">
               Generate high-quality academic writing that authentically reflects your unique personal style. 
               Stop spending hours tweaking generic AI text.
             </p>
@@ -103,39 +105,29 @@ const Landing = ({ user }) => {
               variant="academic" 
               size="lg" 
               onClick={handleSignIn}
-              className="font-inter font-medium"
+              className="font-inter font-medium bg-white text-gray-900 hover:bg-white/90 shadow-lg"
             >
               Get Started with Google
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <p className="text-sm text-muted-foreground mt-4 font-inter">
+            <p className="text-sm text-white/70 mt-4 font-inter">
               Free to start • No credit card required
             </p>
-          </div>
-          
-          <div className="relative">
-            <div className="relative overflow-hidden rounded-2xl shadow-elegant hero-image">
-              <img 
-                src={heroImage} 
-                alt="Academic writing workspace with books and fountain pen" 
-                className="w-full h-96 object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent"></div>
-            </div>
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
-            How Pensona Works
-          </h2>
-          <p className="text-lg text-muted-foreground font-inter max-w-2xl mx-auto">
-            Three simple steps to transform your writing workflow
-          </p>
-        </div>
+      <section className="bg-gradient-subtle py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
+              How Pensona Works
+            </h2>
+            <p className="text-lg text-muted-foreground font-inter max-w-2xl mx-auto">
+              Three simple steps to transform your writing workflow
+            </p>
+          </div>
 
         <div ref={cardsRef} className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           <Card className="text-center shadow-soft border-0 card-animate hover:shadow-lg transition-all duration-300 cursor-pointer">
@@ -180,10 +172,11 @@ const Landing = ({ user }) => {
             </CardContent>
           </Card>
         </div>
+        </div>
       </section>
 
       {/* Benefits */}
-      <section className="bg-card/50 py-16">
+      <section className="bg-card/50 py-20">
         <div className="container mx-auto px-4">
           <div ref={benefitsRef} className="max-w-3xl mx-auto">
             <h2 className="text-3xl font-playfair font-medium text-center text-foreground mb-12">
@@ -244,23 +237,25 @@ const Landing = ({ user }) => {
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
-            Ready to Write in Your Voice?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8 font-inter">
-            Join students who are already creating better essays faster
-          </p>
-          <Button 
-            variant="academic" 
-            size="lg" 
-            onClick={handleGetStarted}
-            className="font-inter font-medium"
-          >
-            Start Your Free Account
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+      <section className="bg-gradient-subtle py-20">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
+              Ready to Write in Your Voice?
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8 font-inter">
+              Join students who are already creating better essays faster
+            </p>
+            <Button 
+              variant="academic" 
+              size="lg" 
+              onClick={handleGetStarted}
+              className="font-inter font-medium"
+            >
+              Start Your Free Account
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </section>
 

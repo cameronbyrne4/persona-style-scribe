@@ -244,8 +244,8 @@ const Onboarding = () => {
     if (isComplete && successRef.current) {
       animate(
         successRef.current,
-        { scale: [0, 1.1, 1], rotate: [0, 10, -10, 0] },
-        { duration: 0.8, ease: "easeOut", type: "spring", stiffness: 200 }
+        { opacity: [0, 1], scale: [0.9, 1] },
+        { duration: 0.6, ease: "easeOut" }
       );
     }
   }, [isComplete]);
