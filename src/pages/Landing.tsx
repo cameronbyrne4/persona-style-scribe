@@ -3,12 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Upload, RefreshCw, MessageSquare, ArrowRight } from "lucide-react";
 import heroImage from "@/assets/hero-academic.jpg";
 import { supabase } from "@/lib/supabaseClient";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { animate, stagger, inView, scroll } from "motion";
 
 // Accept user as a prop
 const Landing = ({ user }) => {
   const heroRef = useRef<HTMLDivElement>(null);
+  const missionRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const benefitsRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +34,17 @@ const Landing = ({ user }) => {
       });
     }
 
+    // Mission section animation
+    if (missionRef.current) {
+      inView(missionRef.current, () => {
+        animate(
+          missionRef.current.querySelectorAll('h2, p'),
+          { opacity: [0, 1], y: [20, 0] },
+          { delay: stagger(0.2), duration: 0.6, ease: "easeOut" }
+        );
+      });
+    }
+
     // Benefits section animation
     if (benefitsRef.current) {
       inView(benefitsRef.current, () => {
@@ -44,6 +56,8 @@ const Landing = ({ user }) => {
       });
     }
   }, []);
+
+
 
   const handleGetStarted = () => {
     window.location.href = "/onboarding";
@@ -60,19 +74,31 @@ const Landing = ({ user }) => {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/20 bg-white/10 backdrop-blur-md">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 bg-gray-900/20 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <img src="/Pensona.png" alt="Pensona logo" className="w-8 h-8 rounded-lg object-cover" />
-            <h1 className="text-xl font-playfair font-medium text-white">Pensona</h1>
+            <h1 className="text-xl font-playfair font-medium text-white">
+              Pensona
+            </h1>
           </div>
           {/* Conditionally render button based on user */}
           {user ? (
-            <Button variant="outline" size="sm" onClick={handleGoToDashboard} className="bg-white/20 border-white/30 text-white hover:bg-white/30">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleGoToDashboard} 
+              className="bg-white/20 border-white/30 text-white hover:bg-white/30 transition-all duration-300"
+            >
               Go to Dashboard
             </Button>
           ) : (
-            <Button variant="outline" size="sm" onClick={handleSignIn} className="bg-white/20 border-white/30 text-white hover:bg-white/30">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleSignIn} 
+              className="bg-white/20 border-white/30 text-white hover:bg-white/30 transition-all duration-300"
+            >
               Sign In
             </Button>
           )}
@@ -95,11 +121,11 @@ const Landing = ({ user }) => {
         <div ref={heroRef} className="relative z-10 text-center max-w-4xl mx-auto px-4">
           <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 md:p-12 shadow-2xl">
             <h1 className="text-5xl md:text-7xl font-playfair font-medium text-white mb-6 leading-tight">
-              Essays in <span className="text-green-300">Your Voice</span>
+              AI text in <span className="text-green-300">Your Voice</span>
             </h1>
-            <p className="text-xl md:text-2xl text-white/90 mb-8 font-inter max-w-3xl mx-auto">
-              Generate high-quality academic writing that authentically reflects your unique personal style. 
-              Stop spending hours tweaking generic AI text.
+            <p className="text-xl md:text-2xl text-white/90 mb-6 font-inter max-w-3xl mx-auto">
+              Write essays, short answers, and discussion posts that actually sound like you. 
+              Stop spending hours tweaking AI text.
             </p>
             <Button 
               variant="academic" 
@@ -107,11 +133,30 @@ const Landing = ({ user }) => {
               onClick={handleSignIn}
               className="font-inter font-medium bg-white text-gray-900 hover:bg-white/90 shadow-lg"
             >
-              Get Started with Google
+              Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <p className="text-sm text-white/70 mt-4 font-inter">
               Free to start • No credit card required
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Mission Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div ref={missionRef} className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-playfair font-medium text-foreground mb-6">
+              Our Mission
+            </h2>
+            <p className="text-lg md:text-xl text-muted-foreground font-inter leading-relaxed max-w-3xl mx-auto">
+            Not everyone has time to spend their entire night polishing a gen-ed essay—whether you're studying sociology, computer science, or just trying to survive midterms. We built this because we believe AI should work with your voice, not replace it. <br/><br/>
+
+            And honestly, the system’s broken. After 12 years of writing assignments (plus college applications), do we really still need to prove we know how to write a five-paragraph essay?<br/><br/>
+
+            This isn’t about cheating. It’s about working smarter. And still sounding like you.
+
             </p>
           </div>
         </div>
@@ -124,9 +169,7 @@ const Landing = ({ user }) => {
             <h2 className="text-3xl font-playfair font-medium text-foreground mb-4">
               How Pensona Works
             </h2>
-            <p className="text-lg text-muted-foreground font-inter max-w-2xl mx-auto">
-              Three simple steps to transform your writing workflow
-            </p>
+            
           </div>
 
         <div ref={cardsRef} className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -136,10 +179,10 @@ const Landing = ({ user }) => {
                 <Upload className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-xl font-playfair font-medium text-foreground mb-3">
-                Upload Your Writing
+                Upload Samples
               </h3>
               <p className="text-muted-foreground font-inter">
-                Share 2-3 of your best essays (3,000-5,000 words total) to create your style profile
+                Share your favorite old essays to teach us what you sound like as a writer.
               </p>
             </CardContent>
           </Card>
@@ -153,7 +196,7 @@ const Landing = ({ user }) => {
                 Style Transfer
               </h3>
               <p className="text-muted-foreground font-inter">
-                Input any text and watch it transform to match your unique writing voice and cadence
+                Input any text and watch it be translated into your unique writing style.
               </p>
             </CardContent>
           </Card>
@@ -167,7 +210,7 @@ const Landing = ({ user }) => {
                 Research & Answer
               </h3>
               <p className="text-muted-foreground font-inter">
-                Upload source materials and ask questions. Get well-researched answers in your style
+                For larger assignments, upload reading materials and ask questions. Get well-researched answers in your style.
               </p>
             </CardContent>
           </Card>
